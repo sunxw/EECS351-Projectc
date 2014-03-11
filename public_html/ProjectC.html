@@ -1,0 +1,79 @@
+<!-- Hangbin Li - EECS 351 Project B
+main html file -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>ProjectB</title>
+    <style type="text/css">
+    .other_part {
+        float: right;
+        width: 21%;
+        font-size: 13px;
+        display: block;
+    }
+    #help_animation_div {
+        color: #FA8072;
+    }
+    </style>
+</head>
+
+<body onload="main()">
+    
+        <div class="other_part">
+            <div id="control_wind_div">
+                <table border="0">
+                    <tr>
+                        <td> <li>Quaternion Information</li><br>
+          1.Camera Control<p>
+           ．A: Move camera to the left<p>
+           ．D: Move camera to the right<p>
+           ．W: Move camera foward<p>
+           ．S: Move camera downward<p>
+           ．T: Move camera up<p>
+           ．R: Move camera down<p>
+           
+           ．J: Turn camera left<p>
+          ．L: Turn camera right<p>
+            ．i: Turen camera up<p>
+              ．K: Turn camera down<p>
+              . O: Change to orthographic view<p>
+                . P: Change to perspective view<p>
+
+         2. Robotics Control<p>
+           ．Left Arrow: Move robotics left;<p>
+           ．Right Arrow: Move robotics right;<p>
+           ．Up Arrow: Move robotics foward;<p>
+           ．Down Arrow: Move robotics downward;<p>
+           ．N: Move robotics up;<p>
+           ．M: Move robotics down;<p> </td>
+                    </tr>
+                </table>
+                <p>
+            </div>
+            <li>Quaternion Information</li>
+            <div id="MouseText">
+                Mouse Drag totals (CVV x,y coords):
+                <br>0,0
+            </div>
+            Current Quaternion:
+            <div id="QuatValue">X=0i, Y=0j, Z=0k,
+                <br>W=1, length=1.
+            </div>
+            <br>
+           
+        </div>
+        <canvas id="webgl" width="1000" height="640">
+            Please use a browser that supports "canvas"
+        </canvas>
+
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/webgl-debug.js"></script>
+    <script src="lib/cuon-utils.js"></script>
+    <script src="lib/cuon-matrix-quat.js"></script>
+    <script src="ProjectC.js"></script>
+</body>
+
+</html>
