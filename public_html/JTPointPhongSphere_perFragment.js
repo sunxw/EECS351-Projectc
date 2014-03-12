@@ -1,38 +1,94 @@
-//3456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_
-//==============================================================================
+//23456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_
 //
-// LookAtTrianglesWithKey_ViewVolume.js (c) 2012 matsuda
+// PointLightedSphere_perFragment.js (c) 2012 matsuda and kanda
 //
-//  MODIFIED 2014.02.19 J. Tumblin to 
-//		--demonstrate multiple viewports (see 'draw()' function at bottom of file)
-//		--draw torus & ground plane in the 3D scene (makeTorus(), makeGroundPlane()
+// MODIFIED for EECS 351-1, Northwestern Univ. Jack Tumblin
+//		Multiple light-sources: 'lamp0, lamp1, lamp2, etc
+//			 RENAME: ambientLight --> lamp0amb, lightColor --> lamp0diff,
+//							 lightPosition --> lamp0pos
+//		Complete the Phong lighting model: add emissive and specular:
+//		--Ke, Ka, Kd, Ks: K==Reflectance; emissive, ambient, diffuse, specular 
+//		--    Ia, Id, Is:	I==Illumination:          ambient, diffuse, specular.
+//		-- Kshiny: specular exponent for 'shinyness'.
+//		-- Implemented Blinn-Phong 'half-angle' specular term (from class)
+//
+  	// 
+  	//		JT:  HOW would we compute the REFLECTED direction R? Which shader
+  	//		JT:  HOW would we find the 'view' direction, to the eye? Which shader?
+  	//
 
 // Vertex shader program
-var VSHADER_SOURCE = 
-  'uniform mat4 u_ModelMatrix;\n' +
-  'uniform mat4 u_MvpMatrix;\n' +
-  
+var VSHADER_SOURCE =
   'attribute vec4 a_Position;\n' +
-  'attribute vec4 a_Color;\n' +
-  'varying vec4 v_Color;\n' +
+  'attribute vec4 a_Normal;\n' +
+																				// Phong diffuse reflectance.
+  'uniform vec3 u_Ke;' + //	Instead, we'll use this 'uniform'
+  'uniform vec3 u_Ka;' + 
+  'uniform vec3 u_Kd;' + 
+  'uniform vec3 u_Ks;' + 
+  'uniform vec3 u_Kshiny;' + 
+ 																				// value for the entire shape
+  'uniform mat4 u_MvpMatrix;\n' +
+  'uniform mat4 u_ModelMatrix;\n' + 		// Model matrix
+  'uniform mat4 u_NormalMatrix;\n' +  	// Inverse Transpose of ModelMatrix;
+  																			// (doesn't distort normal directions)
+  'varying vec4 v_Kd; \n' +							// Phong: diffuse reflectance
+  
+  'varying vec4 v_Ke; \n' +
+  'varying vec4 v_Ka; \n' +
+  'varying vec4 v_Kd; \n' +
+  'varying vec4 v_Ks; \n' +
+  'varying vec4 v_Kshiney; \n' +
+    
+  'varying vec3 v_Normal;\n' +
   'varying vec3 v_Position;\n' +
   
   'void main() {\n' +
-  '  gl_Position = u_ModelMatrix * a_Position;\n' +
+  '  gl_Position = u_MvpMatrix * a_Position;\n' +
+     // Calculate the vertex position & normal in the world coordinate system
+     // and then save a 'varying', so that fragment shader will get per-pixel
+     // values (interpolated between vertices of our drawing prim. (triangle).
   '  v_Position = vec3(u_ModelMatrix * a_Position);\n' +
-  '  v_Color = a_Color;\n' +
-  '}\n';
+  '  v_Normal = normalize(vec3(u_NormalMatrix * a_Normal));\n' +
+//  '  v_Kd = vec4(u_Kd.rgb, 1.0); \n' + 	// diffuse reflectance
+	'v_Kd = vec4(0.0, 1.0, 0.0, 1.0); \n'	+ // TEMP; fixed at green
+    '}\n';
 
-// Fragment shader program----------------------------------
-var FSHADER_SOURCE = 
+// Fragment shader program
+var FSHADER_SOURCE =
   '#ifdef GL_ES\n' +
   'precision mediump float;\n' +
-  '#endif GL_ES\n' +
-  'varying vec4 v_Color;\n' +
+  '#endif\n' +
+  // first light source:
+  'uniform vec3 u_Lamp0Pos;\n' + 			// Phong Illum: position
+  'uniform vec3 u_Lamp0Amb;\n' +   		// Phong Illum: ambient
+  'uniform vec3 u_Lamp0Diff;\n' +     // Phong Illum: diffuse
+	'uniform vec3 u_Lamp0Spec;\n' +			// Phong Illum: specular
+	// YOU write a second one...
+//  'uniform vec3 u_Ke;\n' +							// Phong Reflectance: emissive
+//  'uniform vec3 u_Ka;\n' +							// Phong Reflectance: ambient
+//  'uniform vec3 u_Kd;\n' +							// Phong Reflectance: diffuse
+//  'uniform vec3 u_Ks;\n' +							// Phong Reflectance: specular
+//  'uniform int u_Kshiny;\n' +						// Phong Reflectance: 1 < shiny < 200	
+
+  'varying vec3 v_Normal;\n' +				// Find 3D surface normal at each pix
   'varying vec3 v_Position;\n' +			// and 3D position too -- in 'world' coords
+  'varying vec4 v_Kd;	\n' +						// Find diffuse reflectance K_d per pix
+  																		// Ambient? Emissive? Specular? almost
   'void main() {\n' +
-  '  gl_FragColor = v_Color;\n' +
+     // Normalize the normal because it is interpolated and not 1.0 in length any more
+  '  vec3 normal = normalize(v_Normal);\n' +
+     // Calculate the light direction and make it 1.0 in length
+  '  vec3 lightDirection = normalize(u_Lamp0Pos - v_Position);\n' +
+     // The dot product of the light direction and the normal
+  '  float nDotL = max(dot(lightDirection, normal), 0.0);\n' +
+     // Calculate the final color from diffuse reflection and ambient reflection
+  '  vec3 emissive = vec3(0,0,0);' +
+  '  vec3 ambient = u_Lamp0Amb * v_Kd.rgb;\n' +
+  '  vec3 diffuse = u_Lamp0Diff * v_Kd.rgb * nDotL;\n' +
+  '  gl_FragColor = vec4(emissive + ambient + diffuse, 1.0);\n' +
   '}\n';
+
 
 var floatsPerVertex = 7;	// # of Float32Array elements used for each vertex
 var ANGLE_STEP = 45.0;
@@ -83,21 +139,24 @@ var g_UpX = 0.0, g_UpY = 0.0, g_UpZ = 1.0;
 var g_Teta = 0; 
 var g_UpDown = 0;
 
-
-var u_ModelMatrix;
-var u_MvpMatrix; 
-var modelMatrix = new Matrix4();
-var mvpMatrix = new Matrix4();    // Model view projection matrix
-
+  // Get the storage locations of uniform variables: for matrices
+  var u_ModelMatrix;
+  var u_MvpMatrix;
+  var u_NormalMatrix;
+  
+  	
+  var modelMatrix = new Matrix4();  // Model matrix
+  var mvpMatrix = new Matrix4();    // Model view projection matrix
+  var normalMatrix = new Matrix4(); // Transformation matrix for normals
+  
 // Global vars for mouse click-and-drag for rotation.
 var isDrag=false;		// mouse-drag: true when user holds down mouse button
 var xMclik=0.0;			// last mouse button-down position (in CVV coords)
 var yMclik=0.0;   
 
+
 function main() {
-//==============================================================================
   // Retrieve <canvas> element
-  
   canvas = document.getElementById('webgl');
 
   // Get the rendering context for WebGL
@@ -106,45 +165,69 @@ function main() {
     console.log('Failed to get the rendering context for WebGL');
     return;
   }
+
   // Initialize shaders
   if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
     console.log('Failed to intialize shaders.');
     return;
   }
 
-	// NEW!! Enable 3D depth-test when drawing: don't over-draw at any pixel 
-//	gl.depthFunc(gl.LESS);			 // WebGL default setting: (default)
-	gl.enable(gl.DEPTH_TEST); 
-	
-  // Set the vertex coordinates and color (the blue triangle is in the front)
+  // 
   var n = initVertexBuffers(gl);
-
   if (n < 0) {
-    console.log('Failed to specify the vertex infromation');
+    console.log('Failed to set the vertex information');
     return;
   }
 
-  // Specify the color for clearing <canvas>
-  gl.clearColor(0.2, 0.2, 0.2, 1.0);
+  // Set the clear color and enable the depth test
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.enable(gl.DEPTH_TEST);
 
-  // Get the storage locations of u_ModelMatrix and u_ProjMatrix variables
   // Get the storage locations of uniform variables: for matrices
   u_ModelMatrix = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
-   u_MvpMatrix = gl.getUniformLocation(gl.program, 	'u_MvpMatrix');
-
-  
-  
-  if (!u_ModelMatrix) { 
-    console.log('Failed to get u_ModelMatrix');
+  u_MvpMatrix = gl.getUniformLocation(gl.program, 	'u_MvpMatrix');
+  u_NormalMatrix = gl.getUniformLocation(gl.program,'u_NormalMatrix');
+  if (!u_ModelMatrix	|| !u_MvpMatrix || !u_NormalMatrix) {
+  	console.log('Failed to get matrix storage locations');
+  	return;
+  	}
+	//  ... for Phong light source:
+  var u_Lamp0Pos  = gl.getUniformLocation(gl.program, 	'u_Lamp0Pos');
+  var u_Lamp0Amb  = gl.getUniformLocation(gl.program, 	'u_Lamp0Amb');
+  var u_Lamp0Diff = gl.getUniformLocation(gl.program, 	'u_Lamp0Diff');
+  var u_Lamp0Spec	= gl.getUniformLocation(gl.program,		'u_Lamp0Spec');
+  if( !u_Lamp0Pos || !u_Lamp0Amb	) {//|| !u_Lamp0Diff	) { // || !u_Lamp0Spec	) {
+    console.log('Failed to get the Lamp0 storage locations');
     return;
   }
-  
-    if (!u_MvpMatrix) { 
-    console.log('Failed to get u_MvpMatrix');
-    return;
-  }
+	// ... for Phong material/reflectance:
+//	var u_Ke = gl.getUniformLocation(gl.program, 'u_Ke');
+//	var u_Ka = gl.getUniformLocation(gl.program, 'u_Ka');
+	var u_Kd = gl.getUniformLocation(gl.program, 'u_Kd');
+//	var u_Ks = gl.getUniformLocation(gl.program, 'u_Ks');
+//	var u_Kshiny = gl.getUniformLocation(gl.program, 'u_Kshiny');
+	
+	if(//!u_Ke || !u_Ka || 
+		 !u_Kd 
+//		 || !u_Ks || !u_Kshiny
+		 ) {
+		console.log('Failed to get the Phong Reflectance storage locations');
+	}
 
-  // Create the matrix to specify the view matrix
+  // Position the first light source in World coords: 
+  gl.uniform3f(u_Lamp0Pos, 5.0, 8.0, 7.0);
+	// Set its light output:  
+  gl.uniform3f(u_Lamp0Amb, 0.0, 0.0, 0.0);		// ambient
+  gl.uniform3f(u_Lamp0Diff, 0.8, 0.8, 0.8);		// diffuse
+  gl.uniform3f(u_Lamp0Spec, 0.0, 0.9, 0.0);		// Specular
+
+	// Set the Phong materials' reflectance:
+//	gl.uniform4f(u_Ke, 0.1, 0.1, 0.1);		// Ke emissive
+//	gl.uniform4f(u_Ka, 0.8, 0.8, 0.8);		// Ka ambient
+	gl.uniform4f(u_Kd, 0.0, 1.0, 0.0, 1.0);		// Kd	diffuse
+//	gl.uniform4f(u_Ks, 0.7, 0.7, 0.7);		// Ks specular
+//	gl.uniform1i(u_Kshiny, 4);						// Kshiny shinyness exponent
+	
   
   // Register the event handler to be called on key press
  document.onkeydown = function(ev){ doKeyDown(ev); };
@@ -154,23 +237,16 @@ function main() {
 											// when the mouse moves, call mouseMove() function					
   canvas.onmouseup = 		function(ev){myMouseUp(   ev, gl, canvas)};
   
- 
-	// (Note that I eliminated the 'n' argument (no longer needed)).
-	
-
-    // Start drawing: create 'tick' variable whose value is this function:
+  
   var tick = function() {
     currentAngle = animate(currentAngle);  // Update the rotation angle
-    current_step = animateStep(current_step);
-    winResize();
-    // report current anglse on console
-    //console.log('currentAngle=',currentAngle);
-    requestAnimationFrame(tick, canvas);   
+      current_step = animateStep(current_step);
+        // Calculate the model matrix
+        winResize();
+        requestAnimationFrame(tick, canvas);   
     									// Request that the browser re-draw the webpage
   };
   tick();	
-  
-  //winResize();
 }
 
 function winResize() {
@@ -184,13 +260,6 @@ function winResize() {
 	//canvas.width = innerWidth*3/4;
         canvas.width = innerWidth*3/4;
 	canvas.height = innerHeight*19/20;
-          //
- mvpMatrix.setPerspective(40, canvas.width/canvas.height,1, 100);	
-  // but use a different 'view' matrix:
-  mvpMatrix.setLookAt(g_EyeX, g_EyeY, g_EyeZ, // eye position
-  		       g_CenterX, g_CenterY, g_CenterZ, 		// look-at point 
-  		       g_UpX, g_UpY,g_UpZ);	
-                       
         draw(localGl);
 }
 
@@ -305,152 +374,27 @@ function doKeyDown(event) {
     
 }
 
-
-function initVertexBuffers(gl) {
-//==============================================================================
-
-	// make our 'forest' of triangular-shaped trees:
-   // Make our 'ground plane' and 'torus' shapes too:
-   
-   cubeVerts  =  makeCube();
-   pyramidVerts =  makePyramid();
-   cylVerts = makeCylinder();
-   smallSphereVerts = makeSmallSphere();
-   largeSphereVerts = makeLargeSphere();
-   semiSphereVerts = makeSemiSphere();
-   doubleSphereVerts = makeDoubleSphere();
-   axesVerts = makeAxes();
-   
-   gndVerts =  makeGroundGrid();
-
-	// How much space to store all the shapes in one array?
-	// (no 'var' means this is a global variable)
-	var mySiz = pyramidVerts.length 
-                + cubeVerts.length 
-                + cylVerts.length  
-                + smallSphereVerts.length 
-                + largeSphereVerts.length 
-                + semiSphereVerts.length
-                + doubleSphereVerts.length
-                + axesVerts.length
-                + gndVerts.length;
-
-	// How many vertices total?
-	var nn = mySiz / floatsPerVertex;
-        console.log('cubeVerts.length is', cubeVerts.length);
-	console.log('nn is', nn, 'mySiz is', mySiz, 'floatsPerVertex is', floatsPerVertex);
-
-	// Copy all shapes into one big Float32 array:
-        var verticesColors = new Float32Array(mySiz);
-              // Copy them:  remember where to start for each shape:
-        cubeStart = 0;							// we store the forest first.
-        for(i=0,j=0; j< cubeVerts.length; i++,j++) {verticesColors[i] = cubeVerts[j];} 
-        
-         pyramidStart = i;
-         for(j=0; j< pyramidVerts.length; i++,j++) {verticesColors[i] = pyramidVerts[j];} 
-         
-        cylStart = i;
-         for(j=0; j< cylVerts.length; i++,j++) {verticesColors[i] = cylVerts[j];} 
-         
-         smallSphereStart = i;
-         for(j=0; j< smallSphereVerts.length; i++,j++) {verticesColors[i] = smallSphereVerts[j];} 
-         
-         largeSphereStart = i;
-         for(j=0; j< largeSphereVerts.length; i++,j++) {verticesColors[i] = largeSphereVerts[j];} 
-         
-         semiSphereStart=i;
-         for(j=0; j< semiSphereVerts.length; i++,j++) {verticesColors[i] = semiSphereVerts[j];} 
-         
-         doubleSphereStart = i;
-         for(j=0; j< doubleSphereVerts.length; i++,j++) {verticesColors[i] = doubleSphereVerts[j];} 
-         
-         axesStart = i;
-         for(j=0; j< axesVerts.length; i++,j++) {verticesColors[i] = axesVerts[j];} 
-         
-         gndStart = i;	
-         for(j=0; j< gndVerts.length; i++, j++) {verticesColors[i] = gndVerts[j];}
-
-
-        // Create a buffer object
-        var vertexColorbuffer = gl.createBuffer();  
-        if (!vertexColorbuffer) {
-          console.log('Failed to create the buffer object');
-          return -1;
-        }
-
-        // Write vertex information to buffer object
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorbuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, verticesColors, gl.STATIC_DRAW);
-
-        var FSIZE = verticesColors.BYTES_PER_ELEMENT;
-        // Assign the buffer object to a_Position and enable the assignment
-        var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
-        if(a_Position < 0) {
-          console.log('Failed to get the storage location of a_Position');
-          return -1;
-        }
-
-        gl.vertexAttribPointer(a_Position, 4, gl.FLOAT, false, FSIZE * 7, 0);
-        gl.enableVertexAttribArray(a_Position);
-        // Assign the buffer object to a_Color and enable the assignment
-        var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
-        if(a_Color < 0) {
-          console.log('Failed to get the storage location of a_Color');
-          return -1;
-        }
-
-        gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, FSIZE * 7, FSIZE * 4);
-        gl.enableVertexAttribArray(a_Color);
-
-        return mySiz/floatsPerVertex;	// return # of vertices
-}
-
-
-// Global vars for Eye position. 
-// NOTE!  I moved eyepoint BACKWARDS from the forest: from g_EyeZ=0.25
-// a distance far enough away to see the whole 'forest' of trees within the
-// 30-degree field-of-view of our 'perspective' camera.  I ALSO increased
-// the 'keydown()' function's effect on g_EyeX position.
-
 function draw(gl) {
 //==============================================================================
-  // Clear <canvas> color AND DEPTH buffer
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  
   /** Draw in the FOURTH of several 'viewports'**/
   //Draw first, becasue I do not want the change of view and projection matrixe affects the other 3 fixed view.
-  
-  gl.viewport(0,  	// Viewport lower-left corner
-	      0, 													// location(in pixels)
-              gl.drawingBufferWidth, 		// viewport width, height.
-              gl.drawingBufferHeight);
-  // but use a different 'view' matrix:
-  modelMatrix.setLookAt(g_EyeX, g_EyeY, g_EyeZ, // eye position
-  		       g_CenterX, g_CenterY, g_CenterZ, 		// look-at point 
-  		       g_UpX, g_UpY,g_UpZ);		// up vector
+          // Clear color and depth buffer
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  // Draw the scene:
-  drawMyScene(gl);
+    gl.viewport(0,  	// Viewport lower-left corner
+                0, 													// location(in pixels)
+                gl.drawingBufferWidth, 		// viewport width, height.
+                gl.drawingBufferHeight);
+
+        drawMyScene(gl);
 }
 
 function drawMyScene(myGL) {
     //===============================================================================
-    // Called ONLY from within the 'draw()' function
-    // Assumes already-correctly-set View matrix and Proj matrix; 
-    // draws all items in 'world' coords.
     pushMatrix(modelMatrix);
     drawGrid(myGL);
 
 
-    modelMatrix = popMatrix();
-    pushMatrix(modelMatrix);
-    drawAxes(myGL);
-    
-    /*
-     modelMatrix = popMatrix();
-    pushMatrix(modelMatrix);
-    drawCube(myGL);
-    */
     modelMatrix = popMatrix();
     pushMatrix(modelMatrix);
     drawPyramid(myGL);
@@ -458,22 +402,18 @@ function drawMyScene(myGL) {
     modelMatrix = popMatrix();
     pushMatrix(modelMatrix);
     drawCH4(myGL);
-    
-    /*
-    modelMatrix = popMatrix();
-    pushMatrix(modelMatrix);
-    drawDoubleSphere(myGL);
-   */
+   
+
     modelMatrix = popMatrix();
     pushMatrix(modelMatrix);
     drawAndroid(myGL);
-    
 }
+
 
 function drawGrid(myGL){
    
    // modelMatrix.rotate(-90.0, 1,0,0);	// new one has "+z points upwards",    modelMatrix.translate(0.0, 0.0, -0.6);	
-    modelMatrix.scale(0.4, 0.4,0.4);		// shrink the drawing axes 
+    modelMatrix.setScale(0.4, 0.4,0.4);		// shrink the drawing axes 
     setMatrix(myGL);
     myGL.drawArrays(myGL.LINES,							// use this drawing primitive, and
   							gndStart/floatsPerVertex,	// start at this vertex number, and
@@ -481,52 +421,9 @@ function drawGrid(myGL){
                                                         
 }
 
-function drawAxes(myGL){
-    modelMatrix.scale(0.3,0.3,2);
-    setMatrix(myGL);
-    myGL.drawArrays(myGL.LINES,							// use this drawing primitive, and
-  							axesStart/floatsPerVertex,	// start at this vertex number, and
-  							2);		// draw this many vertices
-    
- 
-    myGL.drawArrays(myGL.LINES,							// use this drawing primitive, and
-  							axesStart/floatsPerVertex + 2,	// start at this vertex number, and
-  							2);		// draw this many vertices
-   
-   myGL.drawArrays(myGL.LINES,							// use this drawing primitive, and
-  							axesStart/floatsPerVertex + 4,	// start at this vertex number, and
-  							2);		// draw this many vertices
-   
-}
-
-function drawCube(myGL){
-  // NEXT, create different drawing axes, and...
-  modelMatrix.translate(-0.7, 0.6, 0.70);  // 'set' means DISCARD old matrix,
-  modelMatrix.scale(0.15, 0.15, 0.15);
-  modelMatrix.rotate(currentAngle, 0,0,1);
-                                                
-  pushMatrix(modelMatrix);                                                
-  modelMatrix.rotate(45, 1, 0, 0);  // Spin on XY diagonal axis
-  setMatrix(myGL);
-  myGL.drawArrays(myGL.TRIANGLES, 0,36);
-  
-  //second cube
-  modelMatrix = popMatrix();
-  pushMatrix(modelMatrix);  
-  modelMatrix.rotate(45, 0, 1, 0);  // Spin on XY diagonal axis
-  setMatrix(myGL);
-  myGL.drawArrays(myGL.TRIANGLES, 36,36);
-  
-  modelMatrix = popMatrix();
-  modelMatrix.rotate(45, 0, 0, 1);  // Spin on XY diagonal axis
-  setMatrix(myGL);
-  myGL.drawArrays(myGL.TRIANGLES, 72,36);
-  
-}
-
 
 function drawPyramid(myGL){
-  modelMatrix.translate(0, 0.6, 0.0);  
+  modelMatrix.setTranslate(0, 0.6, 0.0);  
   modelMatrix.rotate(currentAngle, 0, 0, 1);
   modelMatrix.scale(0.4, 0.4,0.4);
   setMatrix(myGL);
@@ -548,7 +445,8 @@ function drawPyramid(myGL){
 
 function drawCH4(myGL){
     var lenKey = 10;
-    modelMatrix.translate(0.6, 0.4, 0.3);
+    modelMatrix.setTranslate(0.6, 0.4, 0.3);
+     modelMatrix.rotate(currentAngle, 0, 0, 1);
   modelMatrix.scale(0.05, 0.05, 0.05);
   //modelMatrix.rotate(currentAngle, 0, 0, 1);
   
@@ -641,31 +539,19 @@ function drawCH4(myGL){
   setMatrix(myGL);
   myGL.drawArrays(myGL.TRIANGLE_STRIP,				// use this drawing primitive, and
   							cylStart/floatsPerVertex, // start at this vertex number, and
-  							cylVerts.length/floatsPerVertex);	// draw this many vertices.
+        						cylVerts.length/floatsPerVertex);	// draw this many vertices.
                                                         
-}
-
-
-function drawDoubleSphere(myGL){
-    //--------Draw Spinning Sphere
-  modelMatrix.translate( -0.6, -0.8, 0.2); // 'set' means DISCARD old matrix,
-  modelMatrix.rotate(currentAngle, 0, 1, 0);
-  
-  modelMatrix.scale(0.2, 0.2, 0.2);
- setMatrix(myGL);
-  myGL.drawArrays(myGL.TRIANGLE_STRIP,				// use this drawing primitive, and
-  							doubleSphereStart/floatsPerVertex,	// start at this vertex number, and 
-  							doubleSphereVerts.length/floatsPerVertex);	// draw this many vertices.
-  
 }
 
 
 function drawAndroid(myGL){
     //modelMatrix.setScale(0.1, 0.1, 0.1);
-    modelMatrix.setTranslate( X_STEP, Y_STEP-0.4, Z_STEP+0.5);
+    //modelMatrix.setTranslate( X_STEP, Y_STEP-0.4, Z_STEP+0.5);
+  modelMatrix.setTranslate( 0, -0.4, 0.5);
   modelMatrix.rotate(180, 0, 1, 0);
   
-  modelMatrix.scale(0.6, 0.6, 0.6);
+  //modelMatrix.scale(0.6, 0.6, 0.6);
+  //modelMatrix.scale(1.5, 1.5, 1.5);
   pushMatrix(modelMatrix); 
   
   //body
@@ -674,7 +560,7 @@ function drawAndroid(myGL){
   myGL.drawArrays(myGL.TRIANGLE_STRIP,				// use this drawing primitive, and
   							cylStart/floatsPerVertex, // start at this vertex number, and
   							cylVerts.length/floatsPerVertex);	// draw this many vertices.
-  
+ 
   //leg1
   modelMatrix = popMatrix();
   pushMatrix(modelMatrix); 
@@ -686,7 +572,7 @@ function drawAndroid(myGL){
   myGL.drawArrays(myGL.TRIANGLE_STRIP,				// use this drawing primitive, and
   							cylStart/floatsPerVertex, // start at this vertex number, and
   							cylVerts.length/floatsPerVertex);	// draw this many vertices.
-  
+   
    //leg2
   modelMatrix = popMatrix();
   pushMatrix(modelMatrix); 
@@ -761,12 +647,8 @@ function drawAndroid(myGL){
   myGL.drawArrays(myGL.TRIANGLE_STRIP,				// use this drawing primitive, and
   							cylStart/floatsPerVertex, // start at this vertex number, and
   							cylVerts.length/floatsPerVertex);	// draw this many vertices.
- 
-
-
- 
+  
 modelMatrix.scale( 8.2, 8.2,20.0);
- drawAxes(myGL);
   //head
   modelMatrix = popMatrix();
   pushMatrix(modelMatrix); 
@@ -802,7 +684,6 @@ modelMatrix.scale( 8.2, 8.2,20.0);
   							smallSphereStart/floatsPerVertex,	// start at this vertex number, and 
   							smallSphereVerts.length/floatsPerVertex);	// draw this many vertices.
     
-    
  //antena.
  modelMatrix = popMatrix();
  pushMatrix(modelMatrix); 
@@ -830,6 +711,135 @@ modelMatrix.scale( 8.2, 8.2,20.0);
 
 
 
+function initVertexBuffers(gl) { // Create a sphere
+
+
+  cubeVerts  =  makeCube();
+   pyramidVerts =  makePyramid();
+   cylVerts = makeCylinder();
+   smallSphereVerts = makeSmallSphere();
+   largeSphereVerts = makeLargeSphere();
+   semiSphereVerts = makeSemiSphere();
+   
+   axesVerts = makeAxes();
+   
+   gndVerts =  makeGroundGrid();
+
+	// How much space to store all the shapes in one array?
+	// (no 'var' means this is a global variable)
+	var mySiz = pyramidVerts.length 
+                + cubeVerts.length 
+                + cylVerts.length  
+                + smallSphereVerts.length 
+                + largeSphereVerts.length 
+                + semiSphereVerts.length
+                
+                + axesVerts.length
+                + gndVerts.length;
+
+	// How many vertices total?
+	var nn = mySiz / floatsPerVertex;
+        console.log('cubeVerts.length is', cubeVerts.length);
+	console.log('nn is', nn, 'mySiz is', mySiz, 'floatsPerVertex is', floatsPerVertex);
+
+	// Copy all shapes into one big Float32 array:
+        var verticesColors = new Float32Array(mySiz);
+              // Copy them:  remember where to start for each shape:
+        cubeStart = 0;							// we store the forest first.
+        for(i=0,j=0; j< cubeVerts.length; i++,j++) {verticesColors[i] = cubeVerts[j];} 
+        
+         pyramidStart = i;
+         for(j=0; j< pyramidVerts.length; i++,j++) {verticesColors[i] = pyramidVerts[j];} 
+         
+        cylStart = i;
+         for(j=0; j< cylVerts.length; i++,j++) {verticesColors[i] = cylVerts[j];} 
+         
+         smallSphereStart = i;
+         for(j=0; j< smallSphereVerts.length; i++,j++) {verticesColors[i] = smallSphereVerts[j];} 
+         
+         largeSphereStart = i;
+         for(j=0; j< largeSphereVerts.length; i++,j++) {verticesColors[i] = largeSphereVerts[j];} 
+         
+         semiSphereStart=i;
+         for(j=0; j< semiSphereVerts.length; i++,j++) {verticesColors[i] = semiSphereVerts[j];} 
+         
+         
+         axesStart = i;
+         for(j=0; j< axesVerts.length; i++,j++) {verticesColors[i] = axesVerts[j];} 
+         
+         gndStart = i;	
+         for(j=0; j< gndVerts.length; i++, j++) {verticesColors[i] = gndVerts[j];}
+         
+         
+        
+        
+  // Write the vertex property to buffers (coordinates and normals)
+  // Same data can be used for vertex and normal
+  // In order to make it intelligible, another buffer is prepared separately
+  if (!initArrayBuffer(gl, 'a_Position', verticesColors, gl.FLOAT, 0, 3)) return -1;
+  if (!initArrayBuffer(gl, 'a_Normal', verticesColors, gl.FLOAT, 4, 3))  return -1;
+  
+  // Unbind the buffer object
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+  return mySiz/floatsPerVertex;	// return # of vertices
+}
+
+function initArrayBuffer(gl, attribute, data, type, start, num) {
+  // Create a buffer object
+  var buffer = gl.createBuffer();
+  if (!buffer) {
+    console.log('Failed to create the buffer object');
+    return false;
+  }
+  var FSIZE = data.BYTES_PER_ELEMENT;
+  console.log('FFSIZE= ' + FSIZE);
+  // Write date into the buffer object
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  // Assign the buffer object to the attribute variable
+  var a_attribute = gl.getAttribLocation(gl.program, attribute);
+  if (a_attribute < 0) {
+    console.log('Failed to get the storage location of ' + attribute);
+    return false;
+  }
+  gl.vertexAttribPointer(a_attribute, num, type, false,  FSIZE * 7, start);
+  // Enable the assignment of the buffer object to the attribute variable
+  gl.enableVertexAttribArray(a_attribute);
+
+  return true;
+}
+
+function setMatrix(gl){
+                   
+   //
+    // Calculate the view projection matrix
+    mvpMatrix.setPerspective(40, canvas.width/canvas.height, 1, 100);
+    /*
+    mvpMatrix.lookAt(0, 0, 6, 				// eye
+                     0, 0, 0, 				// aim-point
+                     0, 1, 0);				// up.
+*/
+    mvpMatrix.lookAt(g_EyeX, g_EyeY, g_EyeZ, // eye position
+  		       g_CenterX, g_CenterY, g_CenterZ, 		// look-at point 
+  		       g_UpX, g_UpY,g_UpZ);				// up.
+                     
+    mvpMatrix.multiply(modelMatrix);
+    // Calculate the matrix to transform the normal based on the model matrix
+    normalMatrix.setInverseOf(modelMatrix);
+    normalMatrix.transpose();
+
+    // Pass the model matrix to u_ModelMatrix
+    gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+
+    // Pass the model view projection matrix to u_mvpMatrix
+    gl.uniformMatrix4fv(u_MvpMatrix, false, mvpMatrix.elements);
+
+    // Pass the transformation matrix for normals to u_NormalMatrix
+    gl.uniformMatrix4fv(u_NormalMatrix, false, normalMatrix.elements);
+  
+}
+
 
 var g_last = Date.now();
 
@@ -850,7 +860,6 @@ function animate(angle) {
 }
 
 var g_lastforwalk = Date.now();
-
 function animateStep(angle) {
 //==============================================================================
   // Calculate the elapsed time
@@ -866,88 +875,6 @@ function animateStep(angle) {
   var newAngle = angle + (ROBOT_STEP * elapsed) / 1000.0;
   return newAngle %= 360;
 }
-
-function myMouseDown(ev, gl, canvas) {
-//==============================================================================
-// Called when user PRESSES down any mouse button;
-// 									(Which button?    console.log('ev.button='+ev.button);   )
-// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
-//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
-
-// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
-  var rect = ev.target.getBoundingClientRect();	// get canvas corners in pixels
-  var xp = ev.clientX - rect.left;									// x==0 at canvas left edge
-  var yp = canvas.height - (ev.clientY - rect.top);	// y==0 at canvas bottom edge
-//  console.log('myMouseDown(pixel coords): xp,yp=\t',xp,',\t',yp);
-  
-	// Convert to Canonical View Volume (CVV) coordinates too:
-  var x = (xp - canvas.width/2)  / 		// move origin to center of canvas and
-  						 (canvas.width/2);			// normalize canvas to -1 <= x < +1,
-	var y = (yp - canvas.height/2) /		//										 -1 <= y < +1.
-							 (canvas.height/2);
-//	console.log('myMouseDown(CVV coords  ):  x, y=\t',x,',\t',y);
-	
-	isDrag = true;											// set our mouse-dragging flag
-	xMclik = x;													// record where mouse-dragging began
-	yMclik = y;
-};
-
-
-function myMouseMove(ev, gl, canvas) {
-//==============================================================================
-// Called when user MOVES the mouse with a button already pressed down.
-// 									(Which button?   console.log('ev.button='+ev.button);    )
-// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
-//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
-
-	if(isDrag==false) return;				// IGNORE all mouse-moves except 'dragging'
-
-	// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
-  var rect = ev.target.getBoundingClientRect();	// get canvas corners in pixels
-  var xp = ev.clientX - rect.left;									// x==0 at canvas left edge
-	var yp = canvas.height - (ev.clientY - rect.top);	// y==0 at canvas bottom edge
-//  console.log('myMouseMove(pixel coords): xp,yp=\t',xp,',\t',yp);
-  
-	// Convert to Canonical View Volume (CVV) coordinates too:
-  var x = (xp - canvas.width/2)  / 		// move origin to center of canvas and
-  						 (canvas.width/2);			// normalize canvas to -1 <= x < +1,
-	var y = (yp - canvas.height/2) /		//										 -1 <= y < +1.
-							 (canvas.height/2);
-
-	// find how far we dragged the mouse:
-	xMdragTot += (x - xMclik);					// Accumulate change-in-mouse-position,&
-	yMdragTot += (y - yMclik);
-
-};
-
-function myMouseUp(ev, gl, canvas) {
-//==============================================================================
-// Called when user RELEASES mouse button pressed previously.
-// 									(Which button?   console.log('ev.button='+ev.button);    )
-// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
-//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
-
-// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
-  var rect = ev.target.getBoundingClientRect();	// get canvas corners in pixels
-  var xp = ev.clientX - rect.left;									// x==0 at canvas left edge
-	var yp = canvas.height - (ev.clientY - rect.top);	// y==0 at canvas bottom edge
-//  console.log('myMouseUp  (pixel coords): xp,yp=\t',xp,',\t',yp);
-  
-	// Convert to Canonical View Volume (CVV) coordinates too:
-  var x = (xp - canvas.width/2)  / 		// move origin to center of canvas and
-  						 (canvas.width/2);			// normalize canvas to -1 <= x < +1,
-	var y = (yp - canvas.height/2) /		//										 -1 <= y < +1.
-							 (canvas.height/2);
-//	console.log('myMouseUp  (CVV coords  ):  x, y=\t',x,',\t',y);
-	
-	isDrag = false;											// CLEAR our mouse-dragging flag, and
-	// accumulate any final bit of mouse-dragging we did:
-	xMdragTot += (x - xMclik);
-	yMdragTot += (y - yMclik);
-//	console.log('myMouseUp: xMdragTot,yMdragTot =',xMdragTot,',\t',yMdragTot);
-
-};
-
 
 /*Data*/
 function makeGroundGrid() {
@@ -1225,7 +1152,7 @@ function makeCylinder() {
  var ctrColr = new Float32Array([0.2, 0.2, 0.2]);	// dark gray
  var topColr = new Float32Array([0.4, 0.7, 0.4]);	// light green
  var botColr = new Float32Array([0.5, 0.5, 1.0]);	// light blue
- var capVerts =10;	// # of vertices around the topmost 'cap' of the shape
+ var capVerts =50;	// # of vertices around the topmost 'cap' of the shape
  var botRadius = 0.2;		// radius of bottom of cylinder (top always 1.0)
  var floatsPerVertex = 7;
  // Create a (global) array to hold this cylinder's vertices;
@@ -1242,9 +1169,10 @@ function makeCylinder() {
 			cylVerts[j+1] = 0.0;	
 			cylVerts[j+2] = 2.0; 
 			cylVerts[j+3] = 1.0;			// r,g,b = topColr[]
-			cylVerts[j+4]=0.49; 
-			cylVerts[j+5]=0.82; 
-			cylVerts[j+6]=0.0;
+                        
+			cylVerts[j+4]=0.0; 
+			cylVerts[j+5]=0.0; 
+			cylVerts[j+6]=2.0;
 		}
 		else { 	// put odd# vertices around the top cap's outer edge;
 						// x,y,z,w == cos(theta),sin(theta), 1.0, 1.0
@@ -1257,9 +1185,9 @@ function makeCylinder() {
 			cylVerts[j+3] = 1.0;	// w.
 			// r,g,b = topColr[]
                         
-			cylVerts[j+4]=0.27; 
-			cylVerts[j+5]=0.27; 
-			cylVerts[j+6]=0.12;			
+			cylVerts[j+4]=botRadius * Math.cos(Math.PI*(v-1)/capVerts);; 
+			cylVerts[j+5]=botRadius * Math.sin(Math.PI*(v-1)/capVerts);; 
+			cylVerts[j+6]=2.0;			
 		}
 	}
 	// Create the cylinder side walls, made of 2*capVerts vertices.
@@ -1272,9 +1200,9 @@ function makeCylinder() {
 				cylVerts[j+2] = 2.0;	// z
 				cylVerts[j+3] = 1.0;	// w.
 				// r,g,b = topColr[]
-				cylVerts[j+4]=0.49; 
-			cylVerts[j+5]=0.82; 
-			cylVerts[j+6]=0.0;			
+				cylVerts[j+4]=botRadius * Math.cos(Math.PI*(v)/capVerts); 
+			cylVerts[j+5]=botRadius * Math.sin(Math.PI*(v)/capVerts); 
+			cylVerts[j+6]=2.0;			
 		}
 		else		// position all odd# vertices along the bottom cap:
 		{
@@ -1283,9 +1211,9 @@ function makeCylinder() {
 				cylVerts[j+2] = 0.0;	// z
 				cylVerts[j+3] = 1.0;	// w.
 				// r,g,b = topColr[]
-				cylVerts[j+4]=0.27; 
-			cylVerts[j+5]=0.27; 
-			cylVerts[j+6]=0.12;		
+				cylVerts[j+4]=botRadius * Math.cos(Math.PI*(v-1)/capVerts); 
+			cylVerts[j+5]=botRadius * Math.sin(Math.PI*(v-1)/capVerts);
+			cylVerts[j+6]=0.0;		
 		}
 	}
 	// Create the cylinder bottom cap, made of 2*capVerts -1 vertices.
@@ -1297,8 +1225,8 @@ function makeCylinder() {
 			cylVerts[j+2] =0.0;	// z
 			cylVerts[j+3] = 1.0;	// w.
 			// r,g,b = topColr[]
-			cylVerts[j+4]=0.49; 
-			cylVerts[j+5]=0.82; 
+			cylVerts[j+4]=botRadius * Math.cos(Math.PI*(v)/capVerts);
+			cylVerts[j+5]=botRadius * Math.sin(Math.PI*(v)/capVerts);
 			cylVerts[j+6]=0.0;		
 		}
 		else {				// position odd#'d vertices at center of the bottom cap:
@@ -1306,9 +1234,9 @@ function makeCylinder() {
 			cylVerts[j+1] = 0.0;	
 			cylVerts[j+2] =0.0; 
 			cylVerts[j+3] = 1.0;			// r,g,b = botColr[]
-			cylVerts[j+4]=0.27; 
-			cylVerts[j+5]=0.27; 
-			cylVerts[j+6]=0.12;
+			cylVerts[j+4]=0.0; 
+			cylVerts[j+5]=0.0; 
+			cylVerts[j+6]=0.0;
 		}
 	}
     return cylVerts;
@@ -1372,7 +1300,11 @@ function makeSmallSphere() {
 				sphVerts[j  ] = sin0 * Math.cos(Math.PI*(v)/sliceVerts); 	
 				sphVerts[j+1] = sin0 * Math.sin(Math.PI*(v)/sliceVerts);	
 				sphVerts[j+2] = cos0;		
-				sphVerts[j+3] = 1.0;			
+				sphVerts[j+3] = 1.0;	
+                                
+                                	sphVerts[j+4]=sin0 * Math.cos(Math.PI*(v)/sliceVerts);
+				sphVerts[j+5]=sin0 * Math.sin(Math.PI*(v)/sliceVerts);
+				sphVerts[j+6]=cos0;	
 			}
 			else { 	// put odd# vertices around the slice's lower edge;
 							// x,y,z,w == cos(theta),sin(theta), 1.0, 1.0
@@ -1380,23 +1312,13 @@ function makeSmallSphere() {
 				sphVerts[j  ] = sin1 * Math.cos(Math.PI*(v-1)/sliceVerts);		// x
 				sphVerts[j+1] = sin1 * Math.sin(Math.PI*(v-1)/sliceVerts);		// y
 				sphVerts[j+2] = cos1;																				// z
-				sphVerts[j+3] = 1.0;																				// w.		
-			}
-			if(s==0) {	// finally, set some interesting colors for vertices:
-				sphVerts[j+4]=0.2; 
-				sphVerts[j+5]=0.48; 
-				sphVerts[j+6]=0.72;	
-				}
-			else if(s==slices-1) {
-				sphVerts[j+4]=0.2; 
-				sphVerts[j+5]=0.48; 
-				sphVerts[j+6]=0.72;
-			}
-			else {
-						sphVerts[j+4]=0.2; 
-				sphVerts[j+5]=0.48; 
-				sphVerts[j+6]=0.72;				
-			}
+				sphVerts[j+3] = 1.0;	
+                                
+                                	sphVerts[j+4]=sin1 * Math.cos(Math.PI*(v-1)/sliceVerts);
+				sphVerts[j+5]=sin1 * Math.sin(Math.PI*(v-1)/sliceVerts); 
+				sphVerts[j+6]=cos1;	
+                            }
+                        
 		}
 	}
         
@@ -1414,10 +1336,7 @@ function makeLargeSphere() {
 											// (choose odd # or prime# to avoid accidental symmetry)
   var sliceVerts	= 50;	// # of vertices around the top edge of the slice
 											// (same number of vertices on bottom of slice, too)
-  var topColr = new Float32Array([0.7, 0.7, 0.7]);	// North Pole: light gray
-  var equColr = new Float32Array([0.3, 0.7, 0.3]);	// Equator:    bright green
-  var botColr = new Float32Array([0.9, 0.9, 0.9]);	// South Pole: brightest gray.
-  var sliceAngle = Math.PI/slices;	// lattitude angle spanned by one slice.
+   var sliceAngle = Math.PI/slices;	// lattitude angle spanned by one slice.
   var floatsPerVertex = 7;
   
 	// Create a (global) array to hold this sphere's vertices:
@@ -1461,7 +1380,11 @@ function makeLargeSphere() {
 				sphVerts[j  ] = 1.5*sin0 * Math.cos(Math.PI*(v)/sliceVerts); 	
 				sphVerts[j+1] = 1.5*sin0 * Math.sin(Math.PI*(v)/sliceVerts);	
 				sphVerts[j+2] = 1.5*cos0;		
-				sphVerts[j+3] = 1.0;			
+				sphVerts[j+3] = 1.0;	
+                                
+                                sphVerts[j+4]=1.5*sin0 * Math.cos(Math.PI*(v)/sliceVerts); // equColr[0]; 
+					sphVerts[j+5]=1.5*sin0 * Math.sin(Math.PI*(v)/sliceVerts);// equColr[1]; 
+					sphVerts[j+6]=1.5*cos0;// equColr[2];
 			}
 			else { 	// put odd# vertices around the slice's lower edge;
 							// x,y,z,w == cos(theta),sin(theta), 1.0, 1.0
@@ -1469,23 +1392,11 @@ function makeLargeSphere() {
 				sphVerts[j  ] = 1.5*sin1 * Math.cos(Math.PI*(v-1)/sliceVerts);		// x
 				sphVerts[j+1] = 1.5*sin1 * Math.sin(Math.PI*(v-1)/sliceVerts);		// y
 				sphVerts[j+2] = 1.5*cos1;																				// z
-				sphVerts[j+3] = 1.0;																				// w.		
-			}
-			if(s==0) {	// finally, set some interesting colors for vertices:
+				sphVerts[j+3] = 1.0;	
                                 
-				sphVerts[j+4]=0.0; 
-				sphVerts[j+5]=0.0; 
-				sphVerts[j+6]=0.0;	
-				}
-			else if(s==slices-1) {
-				sphVerts[j+4]=0.0; 
-				sphVerts[j+5]=0.0; 
-				sphVerts[j+6]=0.0;	
-			}
-			else {
-					sphVerts[j+4]=1.0;// equColr[0]; 
-					sphVerts[j+5]=0.0;// equColr[1]; 
-					sphVerts[j+6]=0.0;// equColr[2];					
+                                sphVerts[j+4]=1.5*sin1 * Math.cos(Math.PI*(v-1)/sliceVerts);// equColr[0]; 
+					sphVerts[j+5]=1.5*sin1 * Math.sin(Math.PI*(v-1)/sliceVerts);// equColr[1]; 
+					sphVerts[j+6]=1.5*cos1;// equColr[2];
 			}
 		}
 	}
@@ -1504,9 +1415,6 @@ function makeSemiSphere() {
 											// (choose odd # or prime# to avoid accidental symmetry)
   var sliceVerts	= 50;	// # of vertices around the top edge of the slice
 											// (same number of vertices on bottom of slice, too)
-  var topColr = new Float32Array([0.7, 0.7, 0.7]);	// North Pole: light gray
-  var equColr = new Float32Array([0.3, 0.7, 0.3]);	// Equator:    bright green
-  var botColr = new Float32Array([0.9, 0.9, 0.9]);	// South Pole: brightest gray.
   var sliceAngle = Math.PI/slices/2;	// lattitude angle spanned by one slice.
   var floatsPerVertex = 7;
   
@@ -1551,7 +1459,12 @@ function makeSemiSphere() {
 				sphVerts[j  ] = sin0 * Math.cos(Math.PI*(v)/sliceVerts); 	
 				sphVerts[j+1] = sin0 * Math.sin(Math.PI*(v)/sliceVerts);	
 				sphVerts[j+2] = cos0;		
-				sphVerts[j+3] = 1.0;			
+				sphVerts[j+3] = 1.0;	
+                                
+                                
+                                		sphVerts[j+4]=sin0 * Math.cos(Math.PI*(v)/sliceVerts);   
+				sphVerts[j+5]=sin0 * Math.sin(Math.PI*(v)/sliceVerts);
+				sphVerts[j+6]=cos0;
 			}
 			else { 	// put odd# vertices around the slice's lower edge;
 							// x,y,z,w == cos(theta),sin(theta), 1.0, 1.0
@@ -1559,175 +1472,18 @@ function makeSemiSphere() {
 				sphVerts[j  ] = sin1 * Math.cos(Math.PI*(v-1)/sliceVerts);		// x
 				sphVerts[j+1] = sin1 * Math.sin(Math.PI*(v-1)/sliceVerts);		// y
 				sphVerts[j+2] = cos1;																				// z
-				sphVerts[j+3] = 1.0;																				// w.		
-			}
-			if(s==0) {	// finally, set some interesting colors for vertices:
-				sphVerts[j+4]=0.49;  
-				sphVerts[j+5]=0.82;
-				sphVerts[j+6]=0;
-				}
-			else if(s==slices-1) {
-					sphVerts[j+4]=0.49;  
-				sphVerts[j+5]=0.82;
-				sphVerts[j+6]=0;	
-			}
-			else {
-						sphVerts[j+4]=0.49;  
-				sphVerts[j+5]=0.82;
-				sphVerts[j+6]=0;					
+				sphVerts[j+3] = 1.0;	
+                                
+                
+                		sphVerts[j+4]=sin1 * Math.cos(Math.PI*(v-1)/sliceVerts); 
+				sphVerts[j+5]=sin1 * Math.sin(Math.PI*(v-1)/sliceVerts);
+				sphVerts[j+6]=cos1;		
 			}
 		}
 	}
         
         return sphVerts;
 }
-
-function makeDoubleSphere() {
-//==============================================================================
-// Make a sphere from one OpenGL TRIANGLE_STRIP primitive.   Make ring-like 
-// equal-lattitude 'slices' of the sphere (bounded by planes of constant z), 
-// and connect them as a 'stepped spiral' design (see makeCylinder) to build the
-// sphere from one triangle strip.
-  var slices = 100;		// # of slices of the sphere along the z axis. >=3 req'd
-											// (choose odd # or prime# to avoid accidental symmetry)
-  var sliceVerts	= 100;	// # of vertices around the top edge of the slice
-											// (same number of vertices on bottom of slice, too)
-  var topColr = new Float32Array([0.7, 0.7, 0.7]);	// North Pole: light gray
-  var equColr = new Float32Array([0.3, 0.7, 0.3]);	// Equator:    bright green
-  var botColr = new Float32Array([0.9, 0.9, 0.9]);	// South Pole: brightest gray.
-  var sliceAngle = Math.PI/slices;	// lattitude angle spanned by one slice.
-
-	// Create a (global) array to hold this sphere's vertices:
-  var sphVerts = new Float32Array(  ((slices * 2* sliceVerts) -2) * floatsPerVertex * 2);
-										// # of vertices * # of elements needed to store them. 
-										// each slice requires 2*sliceVerts vertices except 1st and
-										// last ones, which require only 2*sliceVerts-1.
-										
-	// Create dome-shaped top slice of sphere at z=+1
-	// s counts slices; v counts vertices; 
-	// j counts array elements (vertices * elements per vertex)
-	var cos0 = 0.0;					// sines,cosines of slice's top, bottom edge.
-	var sin0 = 0.0;
-	var cos1 = 0.0;
-	var sin1 = 0.0;	
-	var j = 0;							// initialize our array index
-	var isLast = 0;
-	var isFirst = 1;
-    	
-    for(s=0; s<slices; s++) {	// for each slice of the sphere,
-		// find sines & cosines for top and bottom of this slice
-		if(s==0) {
-			isFirst = 1;	// skip 1st vertex of 1st slice.
-			cos0 = 1.0; 	// initialize: start at north pole.
-			sin0 = 0.0;
-		}
-		else {					// otherwise, new top edge == old bottom edge
-			isFirst = 0;	
-			cos0 = cos1;
-			sin0 = sin1;
-		}								// & compute sine,cosine for new bottom edge.
-		cos1 = Math.cos((s+1)*sliceAngle);
-		sin1 = Math.sin((s+1)*sliceAngle);
-		// go around the entire slice, generating TRIANGLE_STRIP verts
-		// (Note we don't initialize j; grows with each new attrib,vertex, and slice)
-		if(s==slices-1) isLast=1;	// skip last vertex of last slice.
-		for(v=isFirst; v< (2*sliceVerts-isLast)/2; v++, j+=floatsPerVertex) {	
-			if(v%2==0)
-			{				// put even# vertices at the the slice's top edge
-							// (why PI and not 2*PI? because 0 <= v < 2*sliceVerts
-							// and thus we can simplify cos(2*PI(v/2*sliceVerts))  
-				sphVerts[j  ] = sin0 * Math.cos(Math.PI*(v)/sliceVerts); 	
-				sphVerts[j+1] = sin0 * Math.sin(Math.PI*(v)/sliceVerts);	
-				sphVerts[j+2] = cos0;		
-				sphVerts[j+3] = 1.0;			
-			}
-			else { 	// put odd# vertices around the slice's lower edge;
-							// x,y,z,w == cos(theta),sin(theta), 1.0, 1.0
-							// 					theta = 2*PI*((v-1)/2)/capVerts = PI*(v-1)/capVerts
-				sphVerts[j  ] = sin1 * Math.cos(Math.PI*(v-1)/sliceVerts);		// x
-				sphVerts[j+1] = sin1 * Math.sin(Math.PI*(v-1)/sliceVerts);		// y
-				sphVerts[j+2] = cos1;																				// z
-				sphVerts[j+3] = 1.0;																				// w.		
-			}
-                        
-			if(s==0) {	// finally, set some interesting colors for vertices:
-				sphVerts[j+4]=topColr[0]; 
-				sphVerts[j+5]=topColr[1]; 
-				sphVerts[j+6]=topColr[2];	
-				}
-			else if(s==slices-1) {
-				sphVerts[j+4]=botColr[0]; 
-				sphVerts[j+5]=botColr[1]; 
-				sphVerts[j+6]=botColr[2];	
-			}
-			else {
-					sphVerts[j+4]=Math.random();// equColr[0]; 
-					sphVerts[j+5]=Math.random();// equColr[1]; 
-					sphVerts[j+6]=Math.random();// equColr[2];					
-			}
-                        
-		}
-	}
-        
-        
-        
-        
-        for(s=0; s<slices; s++) {	// for each slice of the sphere,
-		// find sines & cosines for top and bottom of this slice
-		if(s==0) {
-			isFirst = 1;	// skip 1st vertex of 1st slice.
-			cos0 = 1.0; 	// initialize: start at north pole.
-			sin0 = 0.0;
-		}
-		else {					// otherwise, new top edge == old bottom edge
-			isFirst = 0;	
-			cos0 = cos1;
-			sin0 = sin1;
-		}								// & compute sine,cosine for new bottom edge.
-		cos1 = Math.cos((s+1)*sliceAngle);
-		sin1 = Math.sin((s+1)*sliceAngle);
-		// go around the entire slice, generating TRIANGLE_STRIP verts
-		// (Note we don't initialize j; grows with each new attrib,vertex, and slice)
-		if(s==slices-1) isLast=1;	// skip last vertex of last slice.
-		for(v=isFirst; v< 2*sliceVerts-isLast; v++, j+=floatsPerVertex) {	
-			if(v%2==0)
-			{				// put even# vertices at the the slice's top edge
-							// (why PI and not 2*PI? because 0 <= v < 2*sliceVerts
-							// and thus we can simplify cos(2*PI(v/2*sliceVerts))  
-				sphVerts[j  ] = 0.5*sin0 * Math.cos(Math.PI*(v)/sliceVerts); 	
-				sphVerts[j+1] = 0.5*sin0 * Math.sin(Math.PI*(v)/sliceVerts);	
-				sphVerts[j+2] = 0.5*cos0;		
-				sphVerts[j+3] = 1.0;			
-			}
-			else { 	// put odd# vertices around the slice's lower edge;
-							// x,y,z,w == cos(theta),sin(theta), 1.0, 1.0
-							// 					theta = 2*PI*((v-1)/2)/capVerts = PI*(v-1)/capVerts
-				sphVerts[j  ] = 0.5*sin1 * Math.cos(Math.PI*(v-1)/sliceVerts);		// x
-				sphVerts[j+1] = 0.5*sin1 * Math.sin(Math.PI*(v-1)/sliceVerts);		// y
-				sphVerts[j+2] = 0.5*cos1;																				// z
-				sphVerts[j+3] = 1.0;																				// w.		
-			}
-			if(s==0) {	// finally, set some interesting colors for vertices:
-				sphVerts[j+4]=1.0; 
-				sphVerts[j+5]=0; 
-				sphVerts[j+6]=0;	
-				}
-			else if(s==slices-1) {
-				sphVerts[j+4]=1.0; 
-				sphVerts[j+5]=0; 
-				sphVerts[j+6]=0;	
-			}
-			else {
-					sphVerts[j+4]=1.0; 
-				sphVerts[j+5]=0; 
-				sphVerts[j+6]=0;;					
-			}
-		}
-	}
-        
-        return sphVerts;
-}
-
 
 function makeAxes(){
     // Create a (global) array to hold this cylinder's vertices;
@@ -1745,4 +1501,3 @@ function makeAxes(){
   return axesVerts;
      
  }
- 
