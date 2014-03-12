@@ -295,7 +295,7 @@ function main() {
 
   //gl.uniform3f(u_Lamp0Pos, 50.0, 50.0, 500.0);
 	// Set its light output:  
-  gl.uniform3f(u_Lamp0Amb, 0.0, 0.0, 0.0);		// ambient
+  gl.uniform3f(u_Lamp0Amb, 0.5, 0.5, 0.5);		// ambient
   gl.uniform3f(u_Lamp0Diff, 2, 2, 2);		// diffuse
   gl.uniform3f(u_Lamp0Spec, 0.0, 0.9, 0.0);		// Specular
 
@@ -387,46 +387,46 @@ function doKeyDown(event) {
         g_CenterX += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
         g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
     else if (e == 65) { // A
         g_EyeX -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterX -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
         g_EyeY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
     else if (e == 83) { // S
         g_EyeX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_EyeY -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterY -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
     else if (e == 87) { // W
         g_EyeX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_EyeY += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterY += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
     else if (e == 70) { // F
-        g_EyeX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_EyeZ -= Math.cos(zRotateAngle / 180 * Math.PI) / 5;
         g_CenterZ -= Math.cos(zRotateAngle / 180 * Math.PI) / 5;
     }
     else if (e == 82) { // R
-        g_EyeX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_EyeY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        //g_CenterY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
         g_EyeZ += Math.cos(zRotateAngle / 180 * Math.PI) / 5;
         g_CenterZ += Math.cos(zRotateAngle / 180 * Math.PI) / 5;
     }
