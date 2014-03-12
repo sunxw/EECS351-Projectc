@@ -53,9 +53,7 @@ var VSHADER_SOURCE =
   '  v_Kd = u_Kd; \n' + 	// diffuse reflectance
   '  v_Ks = u_Ks; \n' + 	// diffuse reflectance
   '  v_Kshiny = u_Kshiny; \n' + 	// diffuse reflectance
-  
-  //	'v_Kd = vec4(0.0, 1.0, 0.0, 1.0); \n'	+ // TEMP; fixed at green
-    '}\n';
+  '}\n';
 
 // Fragment shader program
 var FSHADER_SOURCE =
@@ -67,6 +65,15 @@ var FSHADER_SOURCE =
   'uniform vec3 u_Lamp0Amb;\n' +   		// Phong Illum: ambient
   'uniform vec3 u_Lamp0Diff;\n' +     // Phong Illum: diffuse
   'uniform vec3 u_Lamp0Spec;\n' +			// Phong Illum: specular
+  //second light
+  'uniform vec3 u_Lamp0Pos1;\n' + 			// Phong Illum: position
+  'uniform vec3 u_Lamp0Amb1;\n' +   		// Phong Illum: ambient
+  'uniform vec3 u_Lamp0Diff1;\n' +     // Phong Illum: diffuse
+  'uniform vec3 u_Lamp0Spec1;\n' +			// Phong Illum: specular
+  
+  'uniform bool u_FixedLightFlg;\n' +			//light flag
+  'uniform bool u_MoveLightFlg;\n' +                         //light flag
+  //
 	// YOU write a second one...
 //  'uniform vec3 u_Ke;\n' +							// Phong Reflectance: emissive
 //  'uniform vec3 u_Ka;\n' +							// Phong Reflectance: ambient
@@ -89,19 +96,33 @@ var FSHADER_SOURCE =
   '  vec3 lightDirection = normalize(u_Lamp0Pos - v_Position);\n' +
      // The dot product of the light direction and the normal
   '  float nDotL = max(dot(lightDirection, normal), 0.0);\n' +
-   '  float lightDist = length(v_Position);\n' +
    
      // Calculate the final color from diffuse reflection and ambient reflection
   '  vec3 emissive = vec3(v_Ke.rgb);' +
   '  vec3 ambient = u_Lamp0Amb * v_Ka.rgb;\n' +
   '  vec3 diffuse = u_Lamp0Diff * v_Kd.rgb * nDotL;\n' +
-  '  float specular = 0.0;\n' +
+  '  vec3 specular = vec3(0.0,0.0,0.0);\n' +
   '  if (nDotL > 0.0) {\n' +
     '    vec3 reflectVec = reflect(-lightDirection, normal);\n' +
-  '    specular = pow(max(dot(reflectVec, v_Position), 0.0),v_Kshiny);\n' +
+  '    specular = u_Lamp0Spec * v_Ks.rgb * pow(max(dot(reflectVec, normalize(u_Lamp0Pos1)), 0.0),v_Kshiny);\n' +
   '  }\n' +
   
-  '  gl_FragColor = vec4(emissive.rgb + ambient.rgb + diffuse.rgb, 1.0);\n' +
+  //light in the head
+   '  vec3 lightDirection1 = normalize(u_Lamp0Pos1 - v_Position);\n' +
+     // The dot product of the light direction and the normal
+  '  float nDotL1 = max(dot(lightDirection1, normal), 0.0);\n' +
+   
+     // Calculate the final color from diffuse reflection and ambient reflection
+  '  vec3 emissive1 = vec3(v_Ke.rgb);' +
+  '  vec3 ambient1 = u_Lamp0Amb1 * v_Ka.rgb;\n' +
+  '  vec3 diffuse1 = u_Lamp0Diff1 * v_Kd.rgb * nDotL1;\n' +
+  '  vec3 specular1 = vec3(0.0,0.0,0.0);\n' +
+  '  if (nDotL1 > 0.0) {\n' +
+    '    vec3 reflectVec = reflect(-lightDirection1, normal);\n' +
+    '    specular1 = u_Lamp0Spec1 * v_Ks.rgb * pow(max(dot(reflectVec, normalize(u_Lamp0Pos1)), 0.0),v_Kshiny);\n' +
+  '  }\n' +
+  
+  '  gl_FragColor = vec4(emissive + ambient + diffuse + specular, 1.0);\n' +
   '}\n';
 
 //pow(max(dot(reflctive, normailize(v_VRP))), 0.0), 
@@ -170,7 +191,26 @@ var isDrag=false;		// mouse-drag: true when user holds down mouse button
 var xMclik=0.0;			// last mouse button-down position (in CVV coords)
 var yMclik=0.0;   
 
-
+var u_Lamp0Pos;
+  var u_Lamp0Amb;
+  var u_Lamp0Diff;
+  var u_Lamp0Spec;
+  
+  
+var u_Lamp0Pos1;
+  var u_Lamp0Amb1;
+  var u_Lamp0Diff1;
+  var u_Lamp0Spec1;
+   var u_VPR;
+  
+  	// ... for Phong material/reflectance:
+	var u_Ke;
+	var u_Ka;
+	var u_Kd;
+	var u_Ks;
+	var u_Kshiny;
+        
+  
 function main() {
   // Retrieve <canvas> element
   canvas = document.getElementById('webgl');
@@ -208,20 +248,20 @@ function main() {
   	return;
   	}
 	//  ... for Phong light source:
-  var u_Lamp0Pos  = gl.getUniformLocation(gl.program, 	'u_Lamp0Pos');
-  var u_Lamp0Amb  = gl.getUniformLocation(gl.program, 	'u_Lamp0Amb');
-  var u_Lamp0Diff = gl.getUniformLocation(gl.program, 	'u_Lamp0Diff');
-  var u_Lamp0Spec	= gl.getUniformLocation(gl.program,		'u_Lamp0Spec');
+  u_Lamp0Pos  = gl.getUniformLocation(gl.program, 	'u_Lamp0Pos');
+  u_Lamp0Amb  = gl.getUniformLocation(gl.program, 	'u_Lamp0Amb');
+  u_Lamp0Diff = gl.getUniformLocation(gl.program, 	'u_Lamp0Diff');
+  u_Lamp0Spec	= gl.getUniformLocation(gl.program,		'u_Lamp0Spec');
   if( !u_Lamp0Pos || !u_Lamp0Amb	) {//|| !u_Lamp0Diff	) { // || !u_Lamp0Spec	) {
     console.log('Failed to get the Lamp0 storage locations');
     return;
   }
 	// ... for Phong material/reflectance:
-	var u_Ke = gl.getUniformLocation(gl.program, 'u_Ke');
-	var u_Ka = gl.getUniformLocation(gl.program, 'u_Ka');
-	var u_Kd = gl.getUniformLocation(gl.program, 'u_Kd');
-	var u_Ks = gl.getUniformLocation(gl.program, 'u_Ks');
-	var u_Kshiny = gl.getUniformLocation(gl.program, 'u_Kshiny');
+	u_Ke = gl.getUniformLocation(gl.program, 'u_Ke');
+	u_Ka = gl.getUniformLocation(gl.program, 'u_Ka');
+	u_Kd = gl.getUniformLocation(gl.program, 'u_Kd');
+	u_Ks = gl.getUniformLocation(gl.program, 'u_Ks');
+	u_Kshiny = gl.getUniformLocation(gl.program, 'u_Kshiny');
 	
 	if(!u_Ke || !u_Ka || 
 		 !u_Kd 
@@ -231,19 +271,28 @@ function main() {
 	}
 
   // Position the first light source in World coords: 
+  //gl.uniform3f(u_Lamp0Pos, 5.0, 8.0, 7.0);
   gl.uniform3f(u_Lamp0Pos, 5.0, 8.0, 7.0);
 	// Set its light output:  
   gl.uniform3f(u_Lamp0Amb, 0.0, 0.0, 0.0);		// ambient
-  gl.uniform3f(u_Lamp0Diff, 0.8, 0.8, 0.8);		// diffuse
+  gl.uniform3f(u_Lamp0Diff, 2, 2, 2);		// diffuse
   gl.uniform3f(u_Lamp0Spec, 0.0, 0.9, 0.0);		// Specular
 
-	// Set the Phong materials' reflectance:
-	gl.uniform4f(u_Ke, 0.1, 0.1, 0.1,1.0);		// Ke emissive
-	gl.uniform4f(u_Ka, 0.8, 0.8, 0.8,1.0);		// Ka ambient
-	gl.uniform4f(u_Kd, 0.0, 1.0, 0.0, 1.0);		// Kd	diffuse
-	gl.uniform4f(u_Ks, 0.7, 0.7, 0.7,1.0);		// Ks specular
-	gl.uniform1i(u_Kshiny, 200.0);						// Kshiny shinyness exponent
+
   
+  //sencond light
+  u_Lamp0Pos1  = gl.getUniformLocation(gl.program, 	'u_Lamp0Pos1');
+  u_Lamp0Amb1  = gl.getUniformLocation(gl.program, 	'u_Lamp0Amb1');
+  u_Lamp0Diff1 = gl.getUniformLocation(gl.program, 	'u_Lamp0Diff1');
+  u_Lamp0Spec1	= gl.getUniformLocation(gl.program,	'u_Lamp0Spec1');
+  
+  	// Set its light output:  
+  gl.uniform3f(u_Lamp0Amb1, 0.0, 0.0, 0.0);		// ambient
+  gl.uniform3f(u_Lamp0Diff1, 10, 10, 10);		// diffuse
+  gl.uniform3f(u_Lamp0Spec1, 0.0, 0.9, 0.0);		// Specular
+
+
+
   // Register the event handler to be called on key press
  document.onkeydown = function(ev){ doKeyDown(ev); };
   canvas.onmousedown	=	function(ev){myMouseDown( ev, gl, canvas) }; 
@@ -289,87 +338,80 @@ zRotateAngle %= 360;
 function doKeyDown(event) {
     var e = event.keyCode;
     
-    if(e==40){
-        Y_STEP = Y_STEP-0.01
+      if (e == 68) { // D
+        g_EyeX += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterX += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
-    else if(e==38){
-        Y_STEP = Y_STEP+0.01
+    else if (e == 65) { // A
+        g_EyeX -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterX -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
-    else if(e==37){
-        X_STEP = X_STEP - 0.01;
+    else if (e == 83) { // S
+        g_EyeX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeY -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterY -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
-    else if(e==39){
-        X_STEP = X_STEP + 0.01;
+    else if (e == 87) { // W
+        g_EyeX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeY += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterY += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
     }
-      else if(e==78){
-        Z_STEP = Z_STEP - 0.01;
+    else if (e == 70) { // F
+        g_EyeX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeZ -= Math.cos(zRotateAngle / 180 * Math.PI) / 5;
+        g_CenterZ -= Math.cos(zRotateAngle / 180 * Math.PI) / 5;
     }
-    else if(e==77){
-        Z_STEP = Z_STEP + 0.01;
-    }
-    else if(e==79){//
-        Flg_OP = 0;
-    }
-    else if(e==80){
-        Flg_OP = 1;
-    }
-    else if(e==65){
-        g_EyeX = g_EyeX - 0.02;
-        g_CenterX = g_CenterX - 0.02;
-        //setVectorsForLookAt();
-    }
-    else if(e==68){
-        g_EyeX = g_EyeX + 0.02;
-        g_CenterX = g_CenterX + 0.02;
-        //setVectorsForLookAt();
-    }
-     else if(e==87){
-        g_EyeY = g_EyeY + 0.02;
-        g_CenterY = g_CenterY + 0.02;
-        //setVectorsForLookAt();
-    }
-      else if(e==83){
-        g_EyeY = g_EyeY - 0.02;
-        g_CenterY = g_CenterY - 0.02;
-        //setVectorsForLookAt();
-    }
-    
-     else if(e==82){
-        g_EyeZ = g_EyeZ + 0.02;
-        g_CenterZ = g_CenterZ + 0.02;
-        //setVectorsForLookAt();
-    }
-      else if(e==70){
-        g_EyeZ = g_EyeZ - 0.02;
-        g_CenterZ = g_CenterZ - 0.02;
-        //setVectorsForLookAt();
+    else if (e == 82) { // R
+        g_EyeX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_CenterY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
+        g_EyeZ += Math.cos(zRotateAngle / 180 * Math.PI) / 5;
+        g_CenterZ += Math.cos(zRotateAngle / 180 * Math.PI) / 5;
     }
     
     else if(e==74){
-       xyRotateAngle += 0.5;
+       xyRotateAngle += 0.8;
         xyRotateAngle %= 360;
         // console.log(xyRotateAngle);
         var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
         // console.log(xyLookRadius);
         g_CenterX = g_EyeX - xyLookRadius * Math.sin(xyRotateAngle / 180 * Math.PI);
         g_CenterY = g_EyeY + xyLookRadius * Math.cos(xyRotateAngle / 180 * Math.PI);
-        // console.log(g_LookX, g_LookY, g_LookZ);
+        // console.log(g_CenterX, g_CenterY, g_CenterZ);
         
       
                  
     }
       else if(e==76){
-          xyRotateAngle -= 0.5;
+          xyRotateAngle -= 0.8;
         xyRotateAngle %= 360;
         // console.log(xyRotateAngle);
         var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
         // console.log(xyLookRadius);
         g_CenterX = g_EyeX - xyLookRadius * Math.sin(xyRotateAngle / 180 * Math.PI);
         g_CenterY = g_EyeY + xyLookRadius * Math.cos(xyRotateAngle / 180 * Math.PI);
-        // console.log(g_LookX, g_LookY, g_LookZ);
+        // console.log(g_CenterX, g_CenterY, g_CenterZ);
     }
      else if (e == 73) { // The up arrow key was pressed
-        zRotateAngle -= 0.5;
+        zRotateAngle -= 0.8;
         zRotateAngle %= 360;
         var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
         var zLookRadius = lookRadius * Math.sin(zRotateAngle / 180 * Math.PI);
@@ -378,7 +420,7 @@ function doKeyDown(event) {
         g_CenterZ = g_EyeZ - zLookRadius;
     }
          else if (e == 75) { // The up arrow key was pressed
-        zRotateAngle += 0.5;
+        zRotateAngle += 0.8;
         zRotateAngle %= 360;
         var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
         var zLookRadius = lookRadius * Math.sin(zRotateAngle / 180 * Math.PI);
@@ -401,6 +443,7 @@ function draw(gl) {
                 gl.drawingBufferWidth, 		// viewport width, height.
                 gl.drawingBufferHeight);
 
+ 
         drawMyScene(gl);
 }
 
@@ -438,7 +481,14 @@ function drawGrid(myGL){
 
 
 function drawPyramid(myGL){
-  modelMatrix.setTranslate(0, 0.6, 0.0);  
+    	// Set the Phong materials' reflectance:
+	myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
+	myGL.uniform4f(u_Ka,0.1,     0.1,    0.1,    1.0);		// Ka ambient
+	myGL.uniform4f(u_Kd, 0.6,     0.0,    0.0,    1.0);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.6,     0.6,    0.6,    1.0);		// Ks specular
+	myGL.uniform1i(u_Kshiny, 100.0);	
+        
+  modelMatrix.setTranslate(0, 0.6, 0.2);  
   modelMatrix.rotate(currentAngle, 0, 0, 1);
   modelMatrix.scale(0.4, 0.4,0.4);
   setMatrix(myGL);
@@ -459,8 +509,15 @@ function drawPyramid(myGL){
 }
 
 function drawCH4(myGL){
+        	// Set the Phong materials' reflectance:
+	myGL.uniform4f(u_Ke, 0.1, 0.1, 0.1,1.0);		// Ke emissive
+	myGL.uniform4f(u_Ka, 0.8, 0.8, 0.8,1.0);		// Ka ambient
+	myGL.uniform4f(u_Kd, 0.0, 1.0, 0.0, 1.0);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.7, 0.7, 0.7,1.0);		// Ks specular
+	myGL.uniform1i(u_Kshiny, 100.0);
+        
     var lenKey = 10;
-    modelMatrix.setTranslate(0.6, 0.4, 0.3);
+    modelMatrix.setTranslate(0.9, 0.2, 0.3);
      modelMatrix.rotate(currentAngle, 0, 0, 1);
   modelMatrix.scale(0.05, 0.05, 0.05);
   //modelMatrix.rotate(currentAngle, 0, 0, 1);
@@ -560,9 +617,16 @@ function drawCH4(myGL){
 
 
 function drawAndroid(myGL){
+     	// Set the Phong materials' reflectance:
+	myGL.uniform4f(u_Ke,0.0,      0.0,      0.0,      1.0);		// Ke emissive
+	myGL.uniform4f(u_Ka,0.25,     0.148,    0.06475,  1.0);		// Ka ambient
+	myGL.uniform4f(u_Kd, 0.4,      0.2368,   0.1036,   1.0);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.774597, 0.458561, 0.200621, 1.0);		// Ks specular
+	myGL.uniform1i(u_Kshiny,  76.8);						// Kshiny shinyness exponent
+  
     //modelMatrix.setScale(0.1, 0.1, 0.1);
     //modelMatrix.setTranslate( X_STEP, Y_STEP-0.4, Z_STEP+0.5);
-  modelMatrix.setTranslate( 0, -0.4, 0.5);
+  modelMatrix.setTranslate( -0.9, 0.4, 0.5);
   modelMatrix.rotate(180, 0, 1, 0);
   
   //modelMatrix.scale(0.6, 0.6, 0.6);
@@ -838,7 +902,9 @@ function setMatrix(gl){
     mvpMatrix.lookAt(g_EyeX, g_EyeY, g_EyeZ, // eye position
   		       g_CenterX, g_CenterY, g_CenterZ, 		// look-at point 
   		       g_UpX, g_UpY,g_UpZ);				// up.
-                     
+    //set the second light 
+    gl.uniform3f(u_Lamp0Pos1,g_EyeX, g_EyeY, g_EyeZ);
+     
     mvpMatrix.multiply(modelMatrix);
     // Calculate the matrix to transform the normal based on the model matrix
     normalMatrix.setInverseOf(modelMatrix);
