@@ -71,8 +71,8 @@ var FSHADER_SOURCE =
   'uniform vec3 u_Lamp0Diff1;\n' +     // Phong Illum: diffuse
   'uniform vec3 u_Lamp0Spec1;\n' +			// Phong Illum: specular
   
-  'uniform bool u_FixedLightFlg;\n' +			//light flag
-  'uniform bool u_MoveLightFlg;\n' +                         //light flag
+  'uniform int u_FixedLightFlg;\n' +			//light flag
+  'uniform int u_MoveLightFlg;\n' +                         //light flag
   //
 	// YOU write a second one...
 //  'uniform vec3 u_Ke;\n' +							// Phong Reflectance: emissive
@@ -122,7 +122,22 @@ var FSHADER_SOURCE =
     '    specular1 = u_Lamp0Spec1 * v_Ks.rgb * pow(max(dot(reflectVec, normalize(u_Lamp0Pos1)), 0.0),v_Kshiny);\n' +
   '  }\n' +
   
-  '  gl_FragColor = vec4(emissive + ambient + diffuse + specular, 1.0);\n' +
+  '  if (u_FixedLightFlg == 0 && u_MoveLightFlg == 0) {\n' +
+    '      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n' +
+    '}\n' +
+  
+    '  if (u_FixedLightFlg == 1 && u_MoveLightFlg == 1) {\n' +
+    '     gl_FragColor = vec4(emissive + ambient + diffuse + specular + emissive1 + ambient1 + diffuse1 + specular1, 1.0);\n' +
+    '}\n' +
+
+    '  if (u_FixedLightFlg == 1 && u_MoveLightFlg == 0) {\n' +
+    '     gl_FragColor = vec4(emissive + ambient + diffuse + specular, 1.0);\n' +
+    '}\n' +
+    
+    '  if (u_FixedLightFlg == 0 && u_MoveLightFlg == 1) {\n' +
+    '     gl_FragColor = vec4(emissive1 + ambient1 + diffuse1 + specular1, 1.0);\n' +
+    '}\n' +
+    
   '}\n';
 
 //pow(max(dot(reflctive, normailize(v_VRP))), 0.0), 
@@ -165,7 +180,10 @@ var gndStart;
 
 var X_STEP=0;
 var Y_STEP=0;
-var Z_STEP=0;
+
+var X_Light=0;
+var Y_Light=0;
+var Z_Light=0;
 
 var g_EyeX = 0.0, g_EyeY = -3.25, g_EyeZ = 0.15; 
 //var g_CenterX = 0.0,g_CenterY = -2.25, g_CenterZ = 0.15;
@@ -201,7 +219,6 @@ var u_Lamp0Pos1;
   var u_Lamp0Amb1;
   var u_Lamp0Diff1;
   var u_Lamp0Spec1;
-   var u_VPR;
   
   	// ... for Phong material/reflectance:
 	var u_Ke;
@@ -211,12 +228,16 @@ var u_Lamp0Pos1;
 	var u_Kshiny;
         
   
+  var u_FixedLightFlg;			//light flag
+  var u_MoveLightFlg;                         //light flag
+  var gl;
+  
 function main() {
   // Retrieve <canvas> element
   canvas = document.getElementById('webgl');
 
   // Get the rendering context for WebGL
-  var gl = getWebGLContext(canvas);
+  gl = getWebGLContext(canvas);
   if (!gl) {
     console.log('Failed to get the rendering context for WebGL');
     return;
@@ -271,8 +292,8 @@ function main() {
 	}
 
   // Position the first light source in World coords: 
-  //gl.uniform3f(u_Lamp0Pos, 5.0, 8.0, 7.0);
-  gl.uniform3f(u_Lamp0Pos, 5.0, 8.0, 7.0);
+
+  //gl.uniform3f(u_Lamp0Pos, 50.0, 50.0, 500.0);
 	// Set its light output:  
   gl.uniform3f(u_Lamp0Amb, 0.0, 0.0, 0.0);		// ambient
   gl.uniform3f(u_Lamp0Diff, 2, 2, 2);		// diffuse
@@ -288,10 +309,13 @@ function main() {
   
   	// Set its light output:  
   gl.uniform3f(u_Lamp0Amb1, 0.0, 0.0, 0.0);		// ambient
-  gl.uniform3f(u_Lamp0Diff1, 10, 10, 10);		// diffuse
+  gl.uniform3f(u_Lamp0Diff1, 2, 2, 2);		// diffuse
   gl.uniform3f(u_Lamp0Spec1, 0.0, 0.9, 0.0);		// Specular
 
-
+//light flag
+u_FixedLightFlg = gl.getUniformLocation(gl.program, 	'u_FixedLightFlg');
+  u_MoveLightFlg=gl.getUniformLocation(gl.program, 	'u_MoveLightFlg');
+  
 
   // Register the event handler to be called on key press
  document.onkeydown = function(ev){ doKeyDown(ev); };
@@ -308,7 +332,7 @@ function main() {
         // Calculate the model matrix
         winResize();
         requestAnimationFrame(tick, canvas);   
-    									// Request that the browser re-draw the webpage
+    						
   };
   tick();	
 }
@@ -323,7 +347,9 @@ function winResize() {
 	//Make canvas fill the top 3/4 of our browser window:
 	//canvas.width = innerWidth*3/4;
         canvas.width = innerWidth*3/4;
-	canvas.height = innerHeight*19/20;
+	canvas.height = innerHeight*9/10;
+        localGl.uniform3f(u_Lamp0Pos, 5.0+X_Light, 8.0+Y_Light, 7.0+Z_Light);
+         localGl.uniform3f(u_Lamp0Pos1,g_EyeX, g_EyeY, g_EyeZ);
         draw(localGl);
 }
 
@@ -338,7 +364,25 @@ zRotateAngle %= 360;
 function doKeyDown(event) {
     var e = event.keyCode;
     
-      if (e == 68) { // D
+    if(e==40){
+        Y_Light = Y_Light-5;
+    }
+    else if(e==38){
+        Y_Light = Y_Light+5
+    }
+    else if(e==37){
+        X_Light = X_Light -5;
+    }
+    else if(e==39){
+        X_Light = X_Light +5;
+    }
+      else if(e==78){
+        Z_Light = Z_Light - 5;
+    }
+    else if(e==77){
+        Z_Light = Z_Light + 5;
+    }
+     else if (e == 68) { // D
         g_EyeX += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
         g_CenterX += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
         g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
@@ -486,7 +530,7 @@ function drawPyramid(myGL){
 	myGL.uniform4f(u_Ka,0.1,     0.1,    0.1,    1.0);		// Ka ambient
 	myGL.uniform4f(u_Kd, 0.6,     0.0,    0.0,    1.0);		// Kd	diffuse
 	myGL.uniform4f(u_Ks, 0.6,     0.6,    0.6,    1.0);		// Ks specular
-	myGL.uniform1i(u_Kshiny, 100.0);	
+	myGL.uniform1f(u_Kshiny, 100.0);	
         
   modelMatrix.setTranslate(0, 0.6, 0.2);  
   modelMatrix.rotate(currentAngle, 0, 0, 1);
@@ -514,7 +558,7 @@ function drawCH4(myGL){
 	myGL.uniform4f(u_Ka, 0.8, 0.8, 0.8,1.0);		// Ka ambient
 	myGL.uniform4f(u_Kd, 0.0, 1.0, 0.0, 1.0);		// Kd	diffuse
 	myGL.uniform4f(u_Ks, 0.7, 0.7, 0.7,1.0);		// Ks specular
-	myGL.uniform1i(u_Kshiny, 100.0);
+	myGL.uniform1f(u_Kshiny, 100.0);
         
     var lenKey = 10;
     modelMatrix.setTranslate(0.9, 0.2, 0.3);
@@ -622,7 +666,7 @@ function drawAndroid(myGL){
 	myGL.uniform4f(u_Ka,0.25,     0.148,    0.06475,  1.0);		// Ka ambient
 	myGL.uniform4f(u_Kd, 0.4,      0.2368,   0.1036,   1.0);		// Kd	diffuse
 	myGL.uniform4f(u_Ks, 0.774597, 0.458561, 0.200621, 1.0);		// Ks specular
-	myGL.uniform1i(u_Kshiny,  76.8);						// Kshiny shinyness exponent
+	myGL.uniform1f(u_Kshiny,  76.8);						// Kshiny shinyness exponent
   
     //modelMatrix.setScale(0.1, 0.1, 0.1);
     //modelMatrix.setTranslate( X_STEP, Y_STEP-0.4, Z_STEP+0.5);
@@ -903,8 +947,7 @@ function setMatrix(gl){
   		       g_CenterX, g_CenterY, g_CenterZ, 		// look-at point 
   		       g_UpX, g_UpY,g_UpZ);				// up.
     //set the second light 
-    gl.uniform3f(u_Lamp0Pos1,g_EyeX, g_EyeY, g_EyeZ);
-     
+        
     mvpMatrix.multiply(modelMatrix);
     // Calculate the matrix to transform the normal based on the model matrix
     normalMatrix.setInverseOf(modelMatrix);
@@ -957,6 +1000,41 @@ function animateStep(angle) {
   return newAngle %= 360;
 }
 
+function changeLightParam(paramFlag) {
+    
+    if (paramFlag == 0) {//fixed light
+        if (X_STEP == 0) {
+            
+            gl.uniform1i(u_FixedLightFlg,  1);	
+            X_STEP = 1;
+        }else{
+            gl.uniform1i(u_FixedLightFlg,  0);	
+            X_STEP = 0;
+        }
+    }else{
+        if (Y_STEP == 0) {
+            
+            gl.uniform1i(u_MoveLightFlg,  1);	
+                        Y_STEP = 1;
+        }else{
+            gl.uniform1i(u_MoveLightFlg,  0);	
+                        Y_STEP = 0;
+        }
+    }
+}
+/*
+function changeLightPos(direction){
+    if(direction = 0){
+         gl.uniform3f(u_Lamp0Pos, 50.0, 50.0, 500.0);
+    }else if(direction = 1){
+         gl.uniform3f(u_Lamp0Pos, 50.0, 50.0, 500.0);
+         
+    }else if(direction = 2){
+         gl.uniform3f(u_Lamp0Pos, 50.0, 50.0, 500.0);
+    }else if(direction = 3){
+         gl.uniform3f(u_Lamp0Pos, 50.0, 50.0, 500.0);
+    }
+}*/
 /*Data*/
 function makeGroundGrid() {
 //==============================================================================
@@ -1263,8 +1341,8 @@ function makeCylinder() {
 			cylVerts[j+3] = 1.0;	// w.
 			// r,g,b = topColr[]
                         
-			cylVerts[j+4]=botRadius * Math.cos(Math.PI*(v-1)/capVerts);; 
-			cylVerts[j+5]=botRadius * Math.sin(Math.PI*(v-1)/capVerts);; 
+			cylVerts[j+4]=botRadius * Math.cos(Math.PI*(v-1)/capVerts);
+			cylVerts[j+5]=botRadius * Math.sin(Math.PI*(v-1)/capVerts);
 			cylVerts[j+6]=2.0;			
 		}
 	}

@@ -36,31 +36,33 @@ main html file -->
            ．R: Move camera down<p>
            
            ．J: Turn camera left<p>
-          ．L: Turn camera right<p>
+           ．L: Turn camera right<p>
             ．i: Turen camera up<p>
               ．K: Turn camera down<p>
-              . O: Change to orthographic view<p>
-                . P: Change to perspective view<p>
-
-         2. Robotics Control<p>
-           ．Left Arrow: Move robotics left;<p>
-           ．Right Arrow: Move robotics right;<p>
-           ．Up Arrow: Move robotics foward;<p>
-           ．Down Arrow: Move robotics downward;<p>
-           ．N: Move robotics up;<p>
-           ．M: Move robotics down;<p> </td>
+         
+         2. Fixed Light Source Control<p>
+           ．Left Arrow: Move light left;<p>
+           ．Right Arrow: Move light right;<p>
+           ．Up Arrow: Move light foward;<p>
+           ．Down Arrow: Move light downward;<p>
+           ．N: Move light up;<p>
+           ．M: Move light down;<p> </td>
                     </tr>
                 </table>
                 <p>
             </div>
-            <li>Quaternion Information</li>
+            <li>Light Switch</li>
             <div id="MouseText">
-                Mouse Drag totals (CVV x,y coords):
-                <br>0,0
+               <input type="button" name="Fixed Light" id="light1" onclick="changeLightParam(0)" value="Fixed Light" />
+                <input type="button" name="Movable Light" id="light2" onclick="changeLightParam(1)" value="Movable Light" />
             </div>
-            Current Quaternion:
-            <div id="QuatValue">X=0i, Y=0j, Z=0k,
-                <br>W=1, length=1.
+            <!--
+                     <div id="MouseText">
+               <input type="button" name="Fixed Light" id="light1" onclick="changeLightPos(0)" value=&larr;/>
+               <input type="button" name="Movable Light" id="light2" onclick="changeLightPos(1)" value=&rarr; />
+                <input type="button" name="Fixed Light" id="light1" onclick="changeLightPos(2)" value=&uarr; />
+                <input type="button" name="Movable Light" id="light2" onclick="changeLightPos(3)" value=&darr; />
+            -->
             </div>
             <br>
            
