@@ -22,23 +22,21 @@ var VSHADER_SOURCE =
   'attribute vec4 a_Position;\n' +
   'attribute vec4 a_Normal;\n' +
 																				// Phong diffuse reflectance.
-  'uniform vec3 u_Ke;' + //	Instead, we'll use this 'uniform'
-  'uniform vec3 u_Ka;' + 
-  'uniform vec3 u_Kd;' + 
-  'uniform vec3 u_Ks;' + 
-  'uniform vec3 u_Kshiny;' + 
+  'uniform vec4 u_Ke;' + //	Instead, we'll use this 'uniform'
+  'uniform vec4 u_Ka;' + 
+  'uniform vec4 u_Kd;' + 
+  'uniform vec4 u_Ks;' + 
+  'uniform float u_Kshiny;' + 
  																				// value for the entire shape
   'uniform mat4 u_MvpMatrix;\n' +
   'uniform mat4 u_ModelMatrix;\n' + 		// Model matrix
   'uniform mat4 u_NormalMatrix;\n' +  	// Inverse Transpose of ModelMatrix;
   																			// (doesn't distort normal directions)
-  'varying vec4 v_Kd; \n' +							// Phong: diffuse reflectance
-  
   'varying vec4 v_Ke; \n' +
   'varying vec4 v_Ka; \n' +
   'varying vec4 v_Kd; \n' +
   'varying vec4 v_Ks; \n' +
-  'varying vec4 v_Kshiney; \n' +
+  'varying float v_Kshiny; \n' +
     
   'varying vec3 v_Normal;\n' +
   'varying vec3 v_Position;\n' +
@@ -50,8 +48,13 @@ var VSHADER_SOURCE =
      // values (interpolated between vertices of our drawing prim. (triangle).
   '  v_Position = vec3(u_ModelMatrix * a_Position);\n' +
   '  v_Normal = normalize(vec3(u_NormalMatrix * a_Normal));\n' +
-//  '  v_Kd = vec4(u_Kd.rgb, 1.0); \n' + 	// diffuse reflectance
-	'v_Kd = vec4(0.0, 1.0, 0.0, 1.0); \n'	+ // TEMP; fixed at green
+  '  v_Ke = u_Ke; \n' + 	// diffuse reflectance
+  '  v_Ka = u_Ka; \n' + 	// diffuse reflectance
+  '  v_Kd = u_Kd; \n' + 	// diffuse reflectance
+  '  v_Ks = u_Ks; \n' + 	// diffuse reflectance
+  '  v_Kshiny = u_Kshiny; \n' + 	// diffuse reflectance
+  
+  //	'v_Kd = vec4(0.0, 1.0, 0.0, 1.0); \n'	+ // TEMP; fixed at green
     '}\n';
 
 // Fragment shader program
@@ -63,7 +66,7 @@ var FSHADER_SOURCE =
   'uniform vec3 u_Lamp0Pos;\n' + 			// Phong Illum: position
   'uniform vec3 u_Lamp0Amb;\n' +   		// Phong Illum: ambient
   'uniform vec3 u_Lamp0Diff;\n' +     // Phong Illum: diffuse
-	'uniform vec3 u_Lamp0Spec;\n' +			// Phong Illum: specular
+  'uniform vec3 u_Lamp0Spec;\n' +			// Phong Illum: specular
 	// YOU write a second one...
 //  'uniform vec3 u_Ke;\n' +							// Phong Reflectance: emissive
 //  'uniform vec3 u_Ka;\n' +							// Phong Reflectance: ambient
@@ -73,7 +76,11 @@ var FSHADER_SOURCE =
 
   'varying vec3 v_Normal;\n' +				// Find 3D surface normal at each pix
   'varying vec3 v_Position;\n' +			// and 3D position too -- in 'world' coords
-  'varying vec4 v_Kd;	\n' +						// Find diffuse reflectance K_d per pix
+  'varying vec4 v_Ke;	\n' +						// Find diffuse reflectance K_d per pix
+  'varying vec4 v_Ka;	\n' +
+    'varying vec4 v_Kd;	\n' +
+    'varying vec4 v_Ks;	\n' +
+    'varying float v_Kshiny;\n' +
   																		// Ambient? Emissive? Specular? almost
   'void main() {\n' +
      // Normalize the normal because it is interpolated and not 1.0 in length any more
@@ -82,13 +89,22 @@ var FSHADER_SOURCE =
   '  vec3 lightDirection = normalize(u_Lamp0Pos - v_Position);\n' +
      // The dot product of the light direction and the normal
   '  float nDotL = max(dot(lightDirection, normal), 0.0);\n' +
+   '  float lightDist = length(v_Position);\n' +
+   
      // Calculate the final color from diffuse reflection and ambient reflection
-  '  vec3 emissive = vec3(0,0,0);' +
-  '  vec3 ambient = u_Lamp0Amb * v_Kd.rgb;\n' +
+  '  vec3 emissive = vec3(v_Ke.rgb);' +
+  '  vec3 ambient = u_Lamp0Amb * v_Ka.rgb;\n' +
   '  vec3 diffuse = u_Lamp0Diff * v_Kd.rgb * nDotL;\n' +
-  '  gl_FragColor = vec4(emissive + ambient + diffuse, 1.0);\n' +
+  '  float specular = 0.0;\n' +
+  '  if (nDotL > 0.0) {\n' +
+    '    vec3 reflectVec = reflect(-lightDirection, normal);\n' +
+  '    specular = pow(max(dot(reflectVec, v_Position), 0.0),v_Kshiny);\n' +
+  '  }\n' +
+  
+  '  gl_FragColor = vec4(emissive.rgb + ambient.rgb + diffuse.rgb, 1.0);\n' +
   '}\n';
 
+//pow(max(dot(reflctive, normailize(v_VRP))), 0.0), 
 
 var floatsPerVertex = 7;	// # of Float32Array elements used for each vertex
 var ANGLE_STEP = 45.0;
@@ -201,15 +217,15 @@ function main() {
     return;
   }
 	// ... for Phong material/reflectance:
-//	var u_Ke = gl.getUniformLocation(gl.program, 'u_Ke');
-//	var u_Ka = gl.getUniformLocation(gl.program, 'u_Ka');
+	var u_Ke = gl.getUniformLocation(gl.program, 'u_Ke');
+	var u_Ka = gl.getUniformLocation(gl.program, 'u_Ka');
 	var u_Kd = gl.getUniformLocation(gl.program, 'u_Kd');
-//	var u_Ks = gl.getUniformLocation(gl.program, 'u_Ks');
-//	var u_Kshiny = gl.getUniformLocation(gl.program, 'u_Kshiny');
+	var u_Ks = gl.getUniformLocation(gl.program, 'u_Ks');
+	var u_Kshiny = gl.getUniformLocation(gl.program, 'u_Kshiny');
 	
-	if(//!u_Ke || !u_Ka || 
+	if(!u_Ke || !u_Ka || 
 		 !u_Kd 
-//		 || !u_Ks || !u_Kshiny
+		 || !u_Ks || !u_Kshiny
 		 ) {
 		console.log('Failed to get the Phong Reflectance storage locations');
 	}
@@ -222,12 +238,11 @@ function main() {
   gl.uniform3f(u_Lamp0Spec, 0.0, 0.9, 0.0);		// Specular
 
 	// Set the Phong materials' reflectance:
-//	gl.uniform4f(u_Ke, 0.1, 0.1, 0.1);		// Ke emissive
-//	gl.uniform4f(u_Ka, 0.8, 0.8, 0.8);		// Ka ambient
+	gl.uniform4f(u_Ke, 0.1, 0.1, 0.1,1.0);		// Ke emissive
+	gl.uniform4f(u_Ka, 0.8, 0.8, 0.8,1.0);		// Ka ambient
 	gl.uniform4f(u_Kd, 0.0, 1.0, 0.0, 1.0);		// Kd	diffuse
-//	gl.uniform4f(u_Ks, 0.7, 0.7, 0.7);		// Ks specular
-//	gl.uniform1i(u_Kshiny, 4);						// Kshiny shinyness exponent
-	
+	gl.uniform4f(u_Ks, 0.7, 0.7, 0.7,1.0);		// Ks specular
+	gl.uniform1i(u_Kshiny, 200.0);						// Kshiny shinyness exponent
   
   // Register the event handler to be called on key press
  document.onkeydown = function(ev){ doKeyDown(ev); };
@@ -1149,9 +1164,6 @@ function makeCylinder() {
 // 'stepped spiral' design described in notes.
 // Cylinder center at origin, encircles z axis, radius 1, top/bottom at z= +/-1.
 //
- var ctrColr = new Float32Array([0.2, 0.2, 0.2]);	// dark gray
- var topColr = new Float32Array([0.4, 0.7, 0.4]);	// light green
- var botColr = new Float32Array([0.5, 0.5, 1.0]);	// light blue
  var capVerts =50;	// # of vertices around the topmost 'cap' of the shape
  var botRadius = 0.2;		// radius of bottom of cylinder (top always 1.0)
  var floatsPerVertex = 7;
@@ -1202,7 +1214,7 @@ function makeCylinder() {
 				// r,g,b = topColr[]
 				cylVerts[j+4]=botRadius * Math.cos(Math.PI*(v)/capVerts); 
 			cylVerts[j+5]=botRadius * Math.sin(Math.PI*(v)/capVerts); 
-			cylVerts[j+6]=2.0;			
+			cylVerts[j+6]=0.0;			
 		}
 		else		// position all odd# vertices along the bottom cap:
 		{
@@ -1501,3 +1513,85 @@ function makeAxes(){
   return axesVerts;
      
  }
+
+
+function myMouseDown(ev, gl, canvas) {
+//==============================================================================
+// Called when user PRESSES down any mouse button;
+// 									(Which button?    console.log('ev.button='+ev.button);   )
+// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
+//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
+
+// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
+  var rect = ev.target.getBoundingClientRect();	// get canvas corners in pixels
+  var xp = ev.clientX - rect.left;									// x==0 at canvas left edge
+  var yp = canvas.height - (ev.clientY - rect.top);	// y==0 at canvas bottom edge
+//  console.log('myMouseDown(pixel coords): xp,yp=\t',xp,',\t',yp);
+  
+	// Convert to Canonical View Volume (CVV) coordinates too:
+  var x = (xp - canvas.width/2)  / 		// move origin to center of canvas and
+  						 (canvas.width/2);			// normalize canvas to -1 <= x < +1,
+	var y = (yp - canvas.height/2) /		//										 -1 <= y < +1.
+							 (canvas.height/2);
+//	console.log('myMouseDown(CVV coords  ):  x, y=\t',x,',\t',y);
+	
+	isDrag = true;											// set our mouse-dragging flag
+	xMclik = x;													// record where mouse-dragging began
+	yMclik = y;
+};
+
+
+function myMouseMove(ev, gl, canvas) {
+//==============================================================================
+// Called when user MOVES the mouse with a button already pressed down.
+// 									(Which button?   console.log('ev.button='+ev.button);    )
+// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
+//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
+
+	if(isDrag==false) return;				// IGNORE all mouse-moves except 'dragging'
+
+	// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
+  var rect = ev.target.getBoundingClientRect();	// get canvas corners in pixels
+  var xp = ev.clientX - rect.left;									// x==0 at canvas left edge
+	var yp = canvas.height - (ev.clientY - rect.top);	// y==0 at canvas bottom edge
+//  console.log('myMouseMove(pixel coords): xp,yp=\t',xp,',\t',yp);
+  
+	// Convert to Canonical View Volume (CVV) coordinates too:
+  var x = (xp - canvas.width/2)  / 		// move origin to center of canvas and
+  						 (canvas.width/2);			// normalize canvas to -1 <= x < +1,
+	var y = (yp - canvas.height/2) /		//										 -1 <= y < +1.
+							 (canvas.height/2);
+
+	// find how far we dragged the mouse:
+	xMdragTot += (x - xMclik);					// Accumulate change-in-mouse-position,&
+	yMdragTot += (y - yMclik);
+
+};
+
+function myMouseUp(ev, gl, canvas) {
+//==============================================================================
+// Called when user RELEASES mouse button pressed previously.
+// 									(Which button?   console.log('ev.button='+ev.button);    )
+// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
+//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
+
+// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
+  var rect = ev.target.getBoundingClientRect();	// get canvas corners in pixels
+  var xp = ev.clientX - rect.left;									// x==0 at canvas left edge
+	var yp = canvas.height - (ev.clientY - rect.top);	// y==0 at canvas bottom edge
+//  console.log('myMouseUp  (pixel coords): xp,yp=\t',xp,',\t',yp);
+  
+	// Convert to Canonical View Volume (CVV) coordinates too:
+  var x = (xp - canvas.width/2)  / 		// move origin to center of canvas and
+  						 (canvas.width/2);			// normalize canvas to -1 <= x < +1,
+	var y = (yp - canvas.height/2) /		//										 -1 <= y < +1.
+							 (canvas.height/2);
+//	console.log('myMouseUp  (CVV coords  ):  x, y=\t',x,',\t',y);
+	
+	isDrag = false;											// CLEAR our mouse-dragging flag, and
+	// accumulate any final bit of mouse-dragging we did:
+	xMdragTot += (x - xMclik);
+	yMdragTot += (y - yMclik);
+//	console.log('myMouseUp: xMdragTot,yMdragTot =',xMdragTot,',\t',yMdragTot);
+
+};
