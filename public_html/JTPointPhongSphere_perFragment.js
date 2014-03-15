@@ -66,10 +66,10 @@ var FSHADER_SOURCE =
   'uniform vec3 u_Lamp0Diff;\n' +     // Phong Illum: diffuse
   'uniform vec3 u_Lamp0Spec;\n' +			// Phong Illum: specular
   //second light
-  'uniform vec3 u_Lamp0Pos1;\n' + 			// Phong Illum: position
-  'uniform vec3 u_Lamp0Amb1;\n' +   		// Phong Illum: ambient
-  'uniform vec3 u_Lamp0Diff1;\n' +     // Phong Illum: diffuse
-  'uniform vec3 u_Lamp0Spec1;\n' +			// Phong Illum: specular
+  'uniform vec3 u_Lamp1Pos;\n' + 			// Phong Illum: position
+  'uniform vec3 u_Lamp1Amb;\n' +   		// Phong Illum: ambient
+  'uniform vec3 u_Lamp1Diff;\n' +     // Phong Illum: diffuse
+  'uniform vec3 u_Lamp1Spec;\n' +			// Phong Illum: specular
   
   'uniform int u_FixedLightFlg;\n' +			//light flag
   'uniform int u_MoveLightFlg;\n' +                         //light flag
@@ -83,7 +83,8 @@ var FSHADER_SOURCE =
 
   'varying vec3 v_Normal;\n' +				// Find 3D surface normal at each pix
   'varying vec3 v_Position;\n' +			// and 3D position too -- in 'world' coords
-  'varying vec4 v_Ke;	\n' +						// Find diffuse reflectance K_d per pix
+  
+'varying vec4 v_Ke;	\n' +						// Find diffuse reflectance K_d per pix
   'varying vec4 v_Ka;	\n' +
     'varying vec4 v_Kd;	\n' +
     'varying vec4 v_Ks;	\n' +
@@ -104,22 +105,22 @@ var FSHADER_SOURCE =
   '  vec3 specular = vec3(0.0,0.0,0.0);\n' +
   '  if (nDotL > 0.0) {\n' +
     '    vec3 reflectVec = reflect(-lightDirection, normal);\n' +
-  '    specular = u_Lamp0Spec * v_Ks.rgb * pow(max(dot(reflectVec, normalize(u_Lamp0Pos1)), 0.0),v_Kshiny);\n' +
+  '    specular = u_Lamp0Spec * v_Ks.rgb * pow(max(dot(reflectVec, normalize(u_Lamp1Pos-v_Position)), 0.0),v_Kshiny);\n' +
   '  }\n' +
   
   //light in the head
-   '  vec3 lightDirection1 = normalize(u_Lamp0Pos1 - v_Position);\n' +
+   '  vec3 lightDirection1 = normalize(u_Lamp1Pos - v_Position);\n' +
      // The dot product of the light direction and the normal
   '  float nDotL1 = max(dot(lightDirection1, normal), 0.0);\n' +
    
      // Calculate the final color from diffuse reflection and ambient reflection
   '  vec3 emissive1 = vec3(v_Ke.rgb);' +
-  '  vec3 ambient1 = u_Lamp0Amb1 * v_Ka.rgb;\n' +
-  '  vec3 diffuse1 = u_Lamp0Diff1 * v_Kd.rgb * nDotL1;\n' +
+  '  vec3 ambient1 = u_Lamp1Amb * v_Ka.rgb;\n' +
+  '  vec3 diffuse1 = u_Lamp1Diff * v_Kd.rgb * nDotL1;\n' +
   '  vec3 specular1 = vec3(0.0,0.0,0.0);\n' +
   '  if (nDotL1 > 0.0) {\n' +
     '    vec3 reflectVec = reflect(-lightDirection1, normal);\n' +
-    '    specular1 = u_Lamp0Spec1 * v_Ks.rgb * pow(max(dot(reflectVec, normalize(u_Lamp0Pos1)), 0.0),v_Kshiny);\n' +
+    '    specular1 = u_Lamp1Spec * v_Ks.rgb * pow(max(dot(reflectVec, normalize(u_Lamp1Pos-v_Position)), 0.0),v_Kshiny);\n' +
   '  }\n' +
   
   '  if (u_FixedLightFlg == 0 && u_MoveLightFlg == 0) {\n' +
@@ -194,15 +195,15 @@ var g_UpX = 0.0, g_UpY = 0.0, g_UpZ = 1.0;
 var g_Teta = 0; 
 var g_UpDown = 0;
 
-  // Get the storage locations of uniform variables: for matrices
-  var u_ModelMatrix;
-  var u_MvpMatrix;
-  var u_NormalMatrix;
-  
-  	
-  var modelMatrix = new Matrix4();  // Model matrix
-  var mvpMatrix = new Matrix4();    // Model view projection matrix
-  var normalMatrix = new Matrix4(); // Transformation matrix for normals
+// Get the storage locations of uniform variables: for matrices
+var u_ModelMatrix;
+var u_MvpMatrix;
+var u_NormalMatrix;
+
+
+var modelMatrix = new Matrix4();  // Model matrix
+var mvpMatrix = new Matrix4();    // Model view projection matrix
+var normalMatrix = new Matrix4(); // Transformation matrix for normals
   
 // Global vars for mouse click-and-drag for rotation.
 var isDrag=false;		// mouse-drag: true when user holds down mouse button
@@ -210,28 +211,28 @@ var xMclik=0.0;			// last mouse button-down position (in CVV coords)
 var yMclik=0.0;   
 
 var u_Lamp0Pos;
-  var u_Lamp0Amb;
-  var u_Lamp0Diff;
-  var u_Lamp0Spec;
+var u_Lamp0Amb;
+var u_Lamp0Diff;
+var u_Lamp0Spec;
   
   
-var u_Lamp0Pos1;
-  var u_Lamp0Amb1;
-  var u_Lamp0Diff1;
-  var u_Lamp0Spec1;
+var u_Lamp1Pos;
+var u_Lamp1Amb;
+var u_Lamp1Diff;
+var u_Lamp1Spec;
   
-  	// ... for Phong material/reflectance:
-	var u_Ke;
-	var u_Ka;
-	var u_Kd;
-	var u_Ks;
-	var u_Kshiny;
+// ... for Phong material/reflectance:
+var u_Ke;
+var u_Ka;
+var u_Kd;
+var u_Ks;
+var u_Kshiny;
         
   
-  var u_FixedLightFlg;			//light flag
-  var u_MoveLightFlg;                         //light flag
-  var gl;
-  
+var u_FixedLightFlg;			//light flag
+var u_MoveLightFlg;                         //light flag
+var gl;
+
 function main() {
   // Retrieve <canvas> element
   canvas = document.getElementById('webgl');
@@ -277,19 +278,19 @@ function main() {
     console.log('Failed to get the Lamp0 storage locations');
     return;
   }
-	// ... for Phong material/reflectance:
-	u_Ke = gl.getUniformLocation(gl.program, 'u_Ke');
-	u_Ka = gl.getUniformLocation(gl.program, 'u_Ka');
-	u_Kd = gl.getUniformLocation(gl.program, 'u_Kd');
-	u_Ks = gl.getUniformLocation(gl.program, 'u_Ks');
-	u_Kshiny = gl.getUniformLocation(gl.program, 'u_Kshiny');
-	
-	if(!u_Ke || !u_Ka || 
-		 !u_Kd 
-		 || !u_Ks || !u_Kshiny
-		 ) {
-		console.log('Failed to get the Phong Reflectance storage locations');
-	}
+    // ... for Phong material/reflectance:
+    u_Ke = gl.getUniformLocation(gl.program, 'u_Ke');
+    u_Ka = gl.getUniformLocation(gl.program, 'u_Ka');
+    u_Kd = gl.getUniformLocation(gl.program, 'u_Kd');
+    u_Ks = gl.getUniformLocation(gl.program, 'u_Ks');
+    u_Kshiny = gl.getUniformLocation(gl.program, 'u_Kshiny');
+
+    if(!u_Ke || !u_Ka || 
+             !u_Kd 
+             || !u_Ks || !u_Kshiny
+             ) {
+            console.log('Failed to get the Phong Reflectance storage locations');
+    }
 
   // Position the first light source in World coords: 
 
@@ -302,23 +303,23 @@ function main() {
 
   
   //sencond light
-  u_Lamp0Pos1  = gl.getUniformLocation(gl.program, 	'u_Lamp0Pos1');
-  u_Lamp0Amb1  = gl.getUniformLocation(gl.program, 	'u_Lamp0Amb1');
-  u_Lamp0Diff1 = gl.getUniformLocation(gl.program, 	'u_Lamp0Diff1');
-  u_Lamp0Spec1	= gl.getUniformLocation(gl.program,	'u_Lamp0Spec1');
+  u_Lamp1Pos  = gl.getUniformLocation(gl.program, 	'u_Lamp1Pos');
+  u_Lamp1Amb  = gl.getUniformLocation(gl.program, 	'u_Lamp1Amb');
+  u_Lamp1Diff = gl.getUniformLocation(gl.program, 	'u_Lamp1Diff');
+  u_Lamp1Spec	= gl.getUniformLocation(gl.program,	'u_Lamp1Spec');
   
   	// Set its light output:  
-  gl.uniform3f(u_Lamp0Amb1, 0.0, 0.0, 0.0);		// ambient
-  gl.uniform3f(u_Lamp0Diff1, 2, 2, 2);		// diffuse
-  gl.uniform3f(u_Lamp0Spec1, 0.0, 0.9, 0.0);		// Specular
+  gl.uniform3f(u_Lamp1Amb, 0.0, 0.0, 0.0);		// ambient
+  gl.uniform3f(u_Lamp1Diff, 2, 2, 2);		// diffuse
+  gl.uniform3f(u_Lamp1Spec, 0.0, 0.9, 0.0);		// Specular
 
-//light flag
-u_FixedLightFlg = gl.getUniformLocation(gl.program, 	'u_FixedLightFlg');
-  u_MoveLightFlg=gl.getUniformLocation(gl.program, 	'u_MoveLightFlg');
+    //light flag
+    u_FixedLightFlg = gl.getUniformLocation(gl.program, 'u_FixedLightFlg');
+    u_MoveLightFlg=gl.getUniformLocation(gl.program, 	'u_MoveLightFlg');
   
 
   // Register the event handler to be called on key press
- document.onkeydown = function(ev){ doKeyDown(ev); };
+  document.onkeydown = function(ev){ doKeyDown(ev); };
   canvas.onmousedown	=	function(ev){myMouseDown( ev, gl, canvas) }; 
   					// when user's mouse button goes down, call mouseDown() function
   canvas.onmousemove = 	function(ev){myMouseMove( ev, gl, canvas) };
@@ -342,15 +343,15 @@ function winResize() {
 // Called when user re-sizes their browser window , because our HTML file
 // contains:  <body onload="main()" onresize="winResize()">
 
-	var localCanvas = document.getElementById('webgl');	// get current canvas
-	var localGl = getWebGLContext(localCanvas);							// and context:
-	//Make canvas fill the top 3/4 of our browser window:
-	//canvas.width = innerWidth*3/4;
-        canvas.width = innerWidth*3/4;
-	canvas.height = innerHeight*9/10;
-        localGl.uniform3f(u_Lamp0Pos, 5.0+X_Light, 8.0+Y_Light, 7.0+Z_Light);
-         localGl.uniform3f(u_Lamp0Pos1,g_EyeX, g_EyeY, g_EyeZ);
-        draw(localGl);
+    //var localCanvas = document.getElementById('webgl');	// get current canvas
+    //var localGl = getWebGLContext(localCanvas);	// and context:
+    //Make canvas fill the top 3/4 of our browser window:
+    //canvas.width = innerWidth*3/4;
+    canvas.width = innerWidth*3/4;
+    canvas.height = innerHeight*9/10;
+    gl.uniform3f(u_Lamp0Pos, 5.0+X_Light, -8.0+Y_Light, 7.0+Z_Light);
+     gl.uniform3f(u_Lamp1Pos,g_EyeX, g_EyeY, g_EyeZ);
+    draw(gl);
 }
 
 var lookRadius = Math.sqrt((g_EyeX - g_CenterX) * (g_EyeX - g_CenterX) + (g_EyeY - g_CenterY) * (g_EyeY - g_CenterY) + (g_EyeZ - g_CenterY) * (g_EyeZ - g_CenterY));
@@ -440,12 +441,9 @@ function doKeyDown(event) {
         g_CenterX = g_EyeX - xyLookRadius * Math.sin(xyRotateAngle / 180 * Math.PI);
         g_CenterY = g_EyeY + xyLookRadius * Math.cos(xyRotateAngle / 180 * Math.PI);
         // console.log(g_CenterX, g_CenterY, g_CenterZ);
-        
-      
-                 
     }
-      else if(e==76){
-          xyRotateAngle -= 0.8;
+    else if(e==76){
+        xyRotateAngle -= 0.8;
         xyRotateAngle %= 360;
         // console.log(xyRotateAngle);
         var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
@@ -496,10 +494,14 @@ function drawMyScene(myGL) {
     pushMatrix(modelMatrix);
     drawGrid(myGL);
 
-
+/*
     modelMatrix = popMatrix();
     pushMatrix(modelMatrix);
     drawPyramid(myGL);
+    */
+    modelMatrix = popMatrix();
+    pushMatrix(modelMatrix);
+    drawCube(myGL);
     
     modelMatrix = popMatrix();
     pushMatrix(modelMatrix);
@@ -514,6 +516,13 @@ function drawMyScene(myGL) {
 
 function drawGrid(myGL){
    
+   	myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
+	myGL.uniform4f(u_Ka,0.05,    0.05,   0.05,   1.0);		// Ka ambient
+	myGL.uniform4f(u_Kd, 0.0,     0.2,    0.6,    1.0);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.1,     0.2,    0.3,    1.0);		// Ks specular
+	myGL.uniform1f(u_Kshiny, 5.0);	
+        
+        
    // modelMatrix.rotate(-90.0, 1,0,0);	// new one has "+z points upwards",    modelMatrix.translate(0.0, 0.0, -0.6);	
     modelMatrix.setScale(0.4, 0.4,0.4);		// shrink the drawing axes 
     setMatrix(myGL);
@@ -523,18 +532,50 @@ function drawGrid(myGL){
                                                         
 }
 
+function drawCube(myGL){
+  // NEXT, create different drawing axes, and...
+  	myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
+	myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
+	myGL.uniform4f(u_Kd, 0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
+	myGL.uniform1f(u_Kshiny, 76.8);	
+        
+        
+  modelMatrix.setTranslate(0, 0.6, 0.70);  // 'set' means DISCARD old matrix,
+  modelMatrix.scale(0.3, 0.3, 0.3);
+  modelMatrix.rotate(currentAngle, 0,0,1);
+                                                
+  pushMatrix(modelMatrix);                                                
+  modelMatrix.rotate(45, 1, 0, 0);  // Spin on XY diagonal axis
+  setMatrix(myGL);
+  myGL.drawArrays(myGL.TRIANGLES, 0,36);
+  
+  //second cube
+  modelMatrix = popMatrix();
+  pushMatrix(modelMatrix);  
+  modelMatrix.rotate(45, 0, 1, 0);  // Spin on XY diagonal axis
+  setMatrix(myGL);
+  myGL.drawArrays(myGL.TRIANGLES, 0,36);
+  
+  modelMatrix = popMatrix();
+  modelMatrix.rotate(45, 0, 0, 1);  // Spin on XY diagonal axis
+  setMatrix(myGL);
+  myGL.drawArrays(myGL.TRIANGLES, 0,36);
+  
+}
 
 function drawPyramid(myGL){
     	// Set the Phong materials' reflectance:
 	myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
-	myGL.uniform4f(u_Ka,0.1,     0.1,    0.1,    1.0);		// Ka ambient
-	myGL.uniform4f(u_Kd, 0.6,     0.0,    0.0,    1.0);		// Kd	diffuse
-	myGL.uniform4f(u_Ks, 0.6,     0.6,    0.6,    1.0);		// Ks specular
-	myGL.uniform1f(u_Kshiny, 100.0);	
+	myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
+	myGL.uniform4f(u_Kd, 0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
+	myGL.uniform1f(u_Kshiny, 76.8);	
         
   modelMatrix.setTranslate(0, 0.6, 0.2);  
+  modelMatrix.rotate(90, 1, 0, 0);
   modelMatrix.rotate(currentAngle, 0, 0, 1);
-  modelMatrix.scale(0.4, 0.4,0.4);
+  modelMatrix.scale(0.7, 0.7, 0.7);
   setMatrix(myGL);
   myGL.drawArrays(myGL.TRIANGLES, pyramidStart/floatsPerVertex,	
                                   pyramidVerts.length/floatsPerVertex);
@@ -554,16 +595,24 @@ function drawPyramid(myGL){
 
 function drawCH4(myGL){
         	// Set the Phong materials' reflectance:
-	myGL.uniform4f(u_Ke, 0.1, 0.1, 0.1,1.0);		// Ke emissive
-	myGL.uniform4f(u_Ka, 0.8, 0.8, 0.8,1.0);		// Ka ambient
-	myGL.uniform4f(u_Kd, 0.0, 1.0, 0.0, 1.0);		// Kd	diffuse
-	myGL.uniform4f(u_Ks, 0.7, 0.7, 0.7,1.0);		// Ks specular
-	myGL.uniform1f(u_Kshiny, 100.0);
+        /*
+	myGL.uniform4f(u_Ke, 0.0, 0.0, 0.0,1.0);		// Ke emissive
+	myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
+	myGL.uniform4f(u_Kd,0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
+	myGL.uniform1f(u_Kshiny, 76.8);
+        */
+       
+       myGL.uniform4f(u_Ke, 0.0, 0.0, 0.0,1.0);		// Ke emissive
+	myGL.uniform4f(u_Ka,0.05375,  0.05,     0.06625,  0.82);		// Ka ambient
+	myGL.uniform4f(u_Kd,0.18275,  0.17,     0.22525,  0.82);		// Kd	diffuse
+	myGL.uniform4f(u_Ks, 0.332741, 0.328634, 0.346435, 0.82);		// Ks specular
+	myGL.uniform1f(u_Kshiny,  38.4);
         
     var lenKey = 10;
-    modelMatrix.setTranslate(0.9, 0.2, 0.3);
+    modelMatrix.setTranslate(0.9, -0.2, 0.3);
      modelMatrix.rotate(currentAngle, 0, 0, 1);
-  modelMatrix.scale(0.05, 0.05, 0.05);
+  modelMatrix.scale(0.08, 0.08, 0.08);
   //modelMatrix.rotate(currentAngle, 0, 0, 1);
   
   //z=squr 6 /12
@@ -670,7 +719,7 @@ function drawAndroid(myGL){
   
     //modelMatrix.setScale(0.1, 0.1, 0.1);
     //modelMatrix.setTranslate( X_STEP, Y_STEP-0.4, Z_STEP+0.5);
-  modelMatrix.setTranslate( -0.9, 0.4, 0.5);
+  modelMatrix.setTranslate( -0.9, 0.0, 0.5);
   modelMatrix.rotate(180, 0, 1, 0);
   
   //modelMatrix.scale(0.6, 0.6, 0.6);
@@ -760,8 +809,6 @@ function drawAndroid(myGL){
   							cylVerts.length/floatsPerVertex);	// draw this many vertices.
  
  
- 
- 
  modelMatrix.translate(0.0, 0.0, 2.0);
   //modelMatrix.scale(0.2, 0.2, 0.15);
   modelMatrix.rotate(current_step+1, 1, 0, 0);
@@ -845,56 +892,53 @@ function initVertexBuffers(gl) { // Create a sphere
    semiSphereVerts = makeSemiSphere();
    
    axesVerts = makeAxes();
-   
    gndVerts =  makeGroundGrid();
 
-	// How much space to store all the shapes in one array?
-	// (no 'var' means this is a global variable)
-	var mySiz = pyramidVerts.length 
-                + cubeVerts.length 
-                + cylVerts.length  
-                + smallSphereVerts.length 
-                + largeSphereVerts.length 
-                + semiSphereVerts.length
-                
-                + axesVerts.length
-                + gndVerts.length;
+    // How much space to store all the shapes in one array?
+    // (no 'var' means this is a global variable)
+    var mySiz = pyramidVerts.length 
+            + cubeVerts.length 
+            + cylVerts.length  
+            + smallSphereVerts.length 
+            + largeSphereVerts.length 
+            + semiSphereVerts.length
 
-	// How many vertices total?
-	var nn = mySiz / floatsPerVertex;
-        console.log('cubeVerts.length is', cubeVerts.length);
-	console.log('nn is', nn, 'mySiz is', mySiz, 'floatsPerVertex is', floatsPerVertex);
+            + axesVerts.length
+            + gndVerts.length;
 
-	// Copy all shapes into one big Float32 array:
-        var verticesColors = new Float32Array(mySiz);
-              // Copy them:  remember where to start for each shape:
-        cubeStart = 0;							// we store the forest first.
-        for(i=0,j=0; j< cubeVerts.length; i++,j++) {verticesColors[i] = cubeVerts[j];} 
-        
-         pyramidStart = i;
-         for(j=0; j< pyramidVerts.length; i++,j++) {verticesColors[i] = pyramidVerts[j];} 
-         
-        cylStart = i;
-         for(j=0; j< cylVerts.length; i++,j++) {verticesColors[i] = cylVerts[j];} 
-         
-         smallSphereStart = i;
-         for(j=0; j< smallSphereVerts.length; i++,j++) {verticesColors[i] = smallSphereVerts[j];} 
-         
-         largeSphereStart = i;
-         for(j=0; j< largeSphereVerts.length; i++,j++) {verticesColors[i] = largeSphereVerts[j];} 
-         
-         semiSphereStart=i;
-         for(j=0; j< semiSphereVerts.length; i++,j++) {verticesColors[i] = semiSphereVerts[j];} 
-         
-         
-         axesStart = i;
-         for(j=0; j< axesVerts.length; i++,j++) {verticesColors[i] = axesVerts[j];} 
-         
-         gndStart = i;	
-         for(j=0; j< gndVerts.length; i++, j++) {verticesColors[i] = gndVerts[j];}
-         
-         
-        
+    // How many vertices total?
+    var nn = mySiz / floatsPerVertex;
+    console.log('cubeVerts.length is', cubeVerts.length);
+    console.log('nn is', nn, 'mySiz is', mySiz, 'floatsPerVertex is', floatsPerVertex);
+
+    // Copy all shapes into one big Float32 array:
+    var verticesColors = new Float32Array(mySiz);
+          // Copy them:  remember where to start for each shape:
+    cubeStart = 0;							// we store the forest first.
+    for(i=0,j=0; j< cubeVerts.length; i++,j++) {verticesColors[i] = cubeVerts[j];} 
+
+     pyramidStart = i;
+     for(j=0; j< pyramidVerts.length; i++,j++) {verticesColors[i] = pyramidVerts[j];} 
+
+    cylStart = i;
+     for(j=0; j< cylVerts.length; i++,j++) {verticesColors[i] = cylVerts[j];} 
+
+     smallSphereStart = i;
+     for(j=0; j< smallSphereVerts.length; i++,j++) {verticesColors[i] = smallSphereVerts[j];} 
+
+     largeSphereStart = i;
+     for(j=0; j< largeSphereVerts.length; i++,j++) {verticesColors[i] = largeSphereVerts[j];} 
+
+     semiSphereStart=i;
+     for(j=0; j< semiSphereVerts.length; i++,j++) {verticesColors[i] = semiSphereVerts[j];} 
+
+
+     axesStart = i;
+     for(j=0; j< axesVerts.length; i++,j++) {verticesColors[i] = axesVerts[j];} 
+
+     gndStart = i;	
+     for(j=0; j< gndVerts.length; i++, j++) {verticesColors[i] = gndVerts[j];}
+
         
   // Write the vertex property to buffers (coordinates and normals)
   // Same data can be used for vertex and normal
@@ -926,7 +970,7 @@ function initArrayBuffer(gl, attribute, data, type, start, num) {
     console.log('Failed to get the storage location of ' + attribute);
     return false;
   }
-  gl.vertexAttribPointer(a_attribute, num, type, false,  FSIZE * 7, start);
+  gl.vertexAttribPointer(a_attribute, num, type, false,  FSIZE * 7, FSIZE * start);
   // Enable the assignment of the buffer object to the attribute variable
   gl.enableVertexAttribArray(a_attribute);
 
@@ -1068,9 +1112,9 @@ function makeGroundGrid() {
 			gndVerts[j+2] = 0.0;									// z
                         gndVerts[j+3] = 1.0;									// z
 		}
-		gndVerts[j+4] = xColr[0];			// red
-		gndVerts[j+5] = xColr[1];			// grn
-		gndVerts[j+6] = xColr[2];			// blu
+		gndVerts[j+4] = gndVerts[j  ]			// red
+		gndVerts[j+5] = gndVerts[j+1]			// grn
+		gndVerts[j+6] = gndVerts[j+2]			// blu
 	}
 	// Second, step thru y values as wqe make horizontal lines of constant-y:
 	// (don't re-initialize j--we're adding more vertices to the array)
@@ -1087,9 +1131,9 @@ function makeGroundGrid() {
 			gndVerts[j+2] = 0.0;									// z
                         gndVerts[j+3] = 1.0;									// z
 		}
-		gndVerts[j+4] = yColr[0];			// red
-		gndVerts[j+5] = yColr[1];			// grn
-		gndVerts[j+6] = yColr[2];			// blu
+		gndVerts[j+4] = gndVerts[j  ]			// red
+		gndVerts[j+5] = gndVerts[j+1]			// grn
+		gndVerts[j+6] = gndVerts[j+2]			// blu
 	}
         
         
@@ -1114,163 +1158,49 @@ function makeCube(){
      1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 3
      
 		// +y face: 
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 1
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 5
-     1.0,  1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 4
+    -1.0,  1.0, -1.0, 1.0,	  0.0,  1.0,  0.0,	// Node 1
+    -1.0,  1.0,  1.0, 1.0,	  0.0,  1.0,  0.0,	// Node 5
+     1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  0.0,	// Node 4
      
-     1.0,  1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 4
-     1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 2 
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 1
+     1.0,  1.0,  1.0, 1.0,	  0.0,  1.0,  0.0,	// Node 4
+     1.0,  1.0, -1.0, 1.0,	  0.0,  1.0,  0.0,	// Node 2 
+    -1.0,  1.0, -1.0, 1.0,	  0.0,  1.0,  0.0,	// Node 1
      
 		// +z face: 
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 5
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 6
-     1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 7
+    -1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  0.1,	// Node 5
+    -1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  0.1,	// Node 6
+     1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  0.1,	// Node 7
      
-     1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 7
-     1.0,  1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 4
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 5
+     1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  0.1,	// Node 7
+     1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  0.1,	// Node 4
+    -1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  0.1,	// Node 5
      
 		// -x face: 
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 6	
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 5 
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 1
+    -1.0, -1.0,  1.0, 1.0,	  -1.0,  0.0,  0.0,	// Node 6	
+    -1.0,  1.0,  1.0, 1.0,	  -1.0,  0.0,  0.0,	// Node 5 
+    -1.0,  1.0, -1.0, 1.0,	  -1.0,  0.0,  0.0,	// Node 1
      
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 1
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 0  
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 6  
+    -1.0,  1.0, -1.0, 1.0,	  -1.0,  0.0,  0.0,	// Node 1
+    -1.0, -1.0, -1.0, 1.0,	  -1.0,  0.0,  0.0,	// Node 0  
+    -1.0, -1.0,  1.0, 1.0,	  -1.0,  0.0,  0.0,	// Node 6  
      
 		// -y face: 
-     1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 3
-     1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 7
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 6
+     1.0, -1.0, -1.0, 1.0,	  0.0,  -1.0,  0.0,	// Node 3
+     1.0, -1.0,  1.0, 1.0,	  0.0,  -1.0,  0.0,	// Node 7
+    -1.0, -1.0,  1.0, 1.0,	  0.0,  -1.0,  0.0,	// Node 6
      
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 6
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 0
-     1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 3
+    -1.0, -1.0,  1.0, 1.0,	  0.0,  -1.0,  0.0,	// Node 6
+    -1.0, -1.0, -1.0, 1.0,	  0.0,  -1.0,  0.0,	// Node 0
+     1.0, -1.0, -1.0, 1.0,	  0.0,  -1.0,  0.0,	// Node 3
      
      // -z face: 
-     1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 2
-     1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 3
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 0		
+     1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  -1.0,	// Node 2
+     1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  -1.0,	// Node 3
+    -1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  -1.0,	// Node 0		
      
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 0
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 1
-     1.0,  1.0, -1.0, 1.0,	  1.0,  0.0,  0.0,	// Node 2
-     
-     
-/*
- * blue cube
-*/
-     1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 3
-     1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 2
-     1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,  // Node 4
-     
-     1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 4
-     1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 7
-     1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 3
-     
-		// +y face: 
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 1
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 5
-     1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 4
-        
-     1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 4
-     1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 2 
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 1
-        
-		// +z face: 
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 5
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 6
-     1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 7
-        
-     1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 7
-     1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 4
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 5
-                              
-		// -x face: 
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 6	
-    -1.0,  1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 5 
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 1
-                              
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 1
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 0  
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 6  
-                              
-		// -y face: 
-     1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 3
-     1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 7
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 6
-                              
-    -1.0, -1.0,  1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 6
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 0
-     1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 3
-                              
-     // -z face: 
-     1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 2
-     1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 3
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 0		
-                              
-    -1.0, -1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 0
-    -1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 1
-     1.0,  1.0, -1.0, 1.0,	  1.0,  1.0,  0.0,	// Node 2
-     
-/*
- * yellow cube
-*/   
-     1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 3
-     1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 2
-     1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,  // Node 4
-                              
-     1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 4
-     1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 7
-     1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 3
-                              
-		// +y face: 
-    -1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 1
-    -1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 5
-     1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 4
-                              
-     1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 4
-     1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 2 
-    -1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 1
-                              
-		// +z face: 
-    -1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 5
-    -1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 6
-     1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 7
-                              
-     1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 7
-     1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 4
-    -1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 5
-                              
-		// -x face: 
-    -1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 6	
-    -1.0,  1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 5 
-    -1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 1
-                              
-    -1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 1
-    -1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 0  
-    -1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 6  
-                              
-		// -y face: 
-     1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 3
-     1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 7
-    -1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 6
-                              
-    -1.0, -1.0,  1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 6
-    -1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 0
-     1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 3
-                              
-     // -z face: 
-     1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 2
-     1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 3
-    -1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 0		
-                              
-    -1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 0
-    -1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0,	// Node 1
-     1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  1.0	// Node 2
- 
+    -1.0, -1.0, -1.0, 1.0,	  0.0,  0.0,  -1.0,	// Node 0
+    -1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  -1.0,	// Node 1
+     1.0,  1.0, -1.0, 1.0,	  0.0,  0.0,  -1.0	// Node 2
   ]);
   return cubeVerts;
   
@@ -1279,23 +1209,23 @@ function makeCube(){
 function makePyramid(){
      var pyramidVerts = new Float32Array([
 			// Face 0: (left side)
-     -0.866, -0.5, 0, 1.0,		0.0, 	1.0,	0.0,	// Node 0
-     0.0, 0.0, 0.2, 1.0, 		1.0,  0.0,  0.0, 	// Node 1
-     -0.16, 0.09, 0.0, 1.0,  		1.0,  0.0,  0.0,	// Node 2
+     -0.866, -0.5, 0, 1.0,		-0.118, 0.1412, 0.15794,	// Node 0
+     0.0, 0.0, 0.2, 1.0, 		-0.118, 0.1412, 0.15794, 	// Node 1
+     -0.16, 0.09, 0.0, 1.0,  		-0.118, 0.1412, 0.15794,	// Node 2
 			// Face 1: (right side)
-    -0.866, -0.5, 0, 1.0,		0.0, 	1.0,	0.0,	// Node 0
-     0.0,  -0.184, 0.0, 1.0,  		1.0,  0.0,  0.0,	// Node 2
-    0, 0, 0.2, 1.0,                     1.0,  0.0,  0.0, 	// Node 3
+    -0.866, -0.5, 0.0, 1.0,		0.0632,-0.1732, 0.159344,	// Node 0
+     0.0,  -0.184, 0.0, 1.0,  		0.0632,-0.1732, 0.159344,	// Node 2
+    0, 0, 0.2, 1.0,                     0.0632,-0.1732, 0.159344, 	// Node 3
     
     	// back face
-    -0.866, -0.5, 0, 1.0,		0.0, 	1.0,	0.0,	// Node 0
-     0.0,  -0.184, 0.0, 1.0,  		1.0,  0.0,  0.0,	// Node 2
-     -0.16, 0.09, 0.0, 1.0,  		1.0,  0.0,  0.0,	// Node 2
+    -0.866, -0.5, 0, 1.0,		0.0, 0.0, -1.0,	// Node 0
+     0.0,  -0.184, 0.0, 1.0,  		0.0, 0.0, -1.0,	// Node 2
+     -0.16, 0.09, 0.0, 1.0,  		0.0, 0.0, -1.0,	// Node 2
      
          	// back face
-     0.0,  -0.184, 0.0, 1.0,  		1.0,  0.0,  0.0,	// Node 2
-     -0.16, 0.09, 0.0, 1.0,  		1.0,  0.0,  0.0,	// Node 2
-     0, 0, 0.2, 1.0,                     1.0,  0.0,  0.0 	// Node 3
+     0.0,  -0.184, 0.0, 1.0,  		0.0548, 0.032, -0.02944,	// Node 2
+     -0.16, 0.09, 0.0, 1.0,  		0.0548, 0.032, -0.02944,	// Node 2
+     0, 0, 0.2, 1.0,                    0.0548, 0.032, -0.02944 	// Node 3
 
   ]);
   return pyramidVerts;
