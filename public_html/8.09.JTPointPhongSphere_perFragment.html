@@ -2,72 +2,44 @@
 main html file -->
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="overflow: hidden">
 
 <head>
     <meta charset="utf-8" />
-    <title>ProjectB</title>
+    <title>ProjectC</title>
     <style type="text/css">
-    .other_part {
-        float: right;
-        width: 21%;
-        font-size: 13px;
-        display: block;
-    }
-    #help_animation_div {
-        color: #FA8072;
-    }
+    #box_relative {
+  position: absolute;
+  color: red;
+  left: 30px;
+  top: 20px;
+}
     </style>
 </head>
 
-<body onload="main()">
+<body onload="main()" style="
+    margin-left: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    margin-right: 0px;
+">
     
-        <div class="other_part">
-            <div id="control_wind_div">
-                <table border="0">
-                    <tr>
-                        <td> <li>User Manuel</li><br>
-          1.Camera Control<p>
-           ．A: Move camera to the left<p>
-           ．D: Move camera to the right<p>
-           ．W: Move camera foward<p>
-           ．S: Move camera downward<p>
-           ．T: Move camera up<p>
-           ．R: Move camera down<p>
-           
-           ．J: Turn camera left<p>
-           ．L: Turn camera right<p>
-            ．i: Turen camera up<p>
-              ．K: Turn camera down<p>
-         
-         2. Fixed Light Source Control<p>
-           ．Left Arrow: Move light left;<p>
-           ．Right Arrow: Move light right;<p>
-           ．Up Arrow: Move light foward;<p>
-           ．Down Arrow: Move light downward;<p>
-           ．N: Move light up;<p>
-           ．M: Move light down;<p> </td>
-                    </tr>
-                </table>
-                <p>
+       
+        <div id="box_relative">
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
+            dfsafsfsadfsdfsfsfsdfsfsfsafdsafsa
             </div>
-            <li>Light Switch</li>
-            <div id="MouseText">
-               <input type="button" name="Fixed Light" id="light1" onclick="changeLightParam(0)" value="Fixed Light" />
-                <input type="button" name="Movable Light" id="light2" onclick="changeLightParam(1)" value="Movable Light" />
-            </div>
-            <!--
-                     <div id="MouseText">
-               <input type="button" name="Fixed Light" id="light1" onclick="changeLightPos(0)" value=&larr;/>
-               <input type="button" name="Movable Light" id="light2" onclick="changeLightPos(1)" value=&rarr; />
-                <input type="button" name="Fixed Light" id="light1" onclick="changeLightPos(2)" value=&uarr; />
-                <input type="button" name="Movable Light" id="light2" onclick="changeLightPos(3)" value=&darr; />
-            -->
-            </div>
-            <br>
-           
-        </div>
-        <canvas id="webgl" width="1000" height="640">
+        <canvas id="webgl" width="1280" height="680">
             Please use a browser that supports "canvas"
         </canvas>
 

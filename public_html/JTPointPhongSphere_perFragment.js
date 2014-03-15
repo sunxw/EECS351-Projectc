@@ -347,11 +347,16 @@ function winResize() {
     //var localGl = getWebGLContext(localCanvas);	// and context:
     //Make canvas fill the top 3/4 of our browser window:
     //canvas.width = innerWidth*3/4;
-    canvas.width = innerWidth*3/4;
-    canvas.height = innerHeight*9/10;
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
     gl.uniform3f(u_Lamp0Pos, 5.0+X_Light, -8.0+Y_Light, 7.0+Z_Light);
-     gl.uniform3f(u_Lamp1Pos,g_EyeX, g_EyeY, g_EyeZ);
+    gl.uniform3f(u_Lamp1Pos,g_EyeX, g_EyeY, g_EyeZ);
+    
+    //gl.uniform1i(u_FixedLightFlg,  1);
+    gl.uniform1i(u_MoveLightFlg,  1);
+    
     draw(gl);
+    //canvas.fillText("Hello World!",10,50);
 }
 
 var lookRadius = Math.sqrt((g_EyeX - g_CenterX) * (g_EyeX - g_CenterX) + (g_EyeY - g_CenterY) * (g_EyeY - g_CenterY) + (g_EyeZ - g_CenterY) * (g_EyeZ - g_CenterY));
@@ -516,11 +521,11 @@ function drawMyScene(myGL) {
 
 function drawGrid(myGL){
    
-   	myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
-	myGL.uniform4f(u_Ka,0.05,    0.05,   0.05,   1.0);		// Ka ambient
-	myGL.uniform4f(u_Kd, 0.0,     0.2,    0.6,    1.0);		// Kd	diffuse
-	myGL.uniform4f(u_Ks, 0.1,     0.2,    0.3,    1.0);		// Ks specular
-	myGL.uniform1f(u_Kshiny, 5.0);	
+    myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
+    myGL.uniform4f(u_Ka,0.05,    0.05,   0.05,   1.0);		// Ka ambient
+    myGL.uniform4f(u_Kd, 0.0,     0.2,    0.6,    1.0);		// Kd	diffuse
+    myGL.uniform4f(u_Ks, 0.1,     0.2,    0.3,    1.0);		// Ks specular
+    myGL.uniform1f(u_Kshiny, 5.0);	
         
         
    // modelMatrix.rotate(-90.0, 1,0,0);	// new one has "+z points upwards",    modelMatrix.translate(0.0, 0.0, -0.6);	
@@ -534,14 +539,14 @@ function drawGrid(myGL){
 
 function drawCube(myGL){
   // NEXT, create different drawing axes, and...
-  	myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
-	myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
-	myGL.uniform4f(u_Kd, 0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
-	myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
-	myGL.uniform1f(u_Kshiny, 76.8);	
+    myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
+    myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
+    myGL.uniform4f(u_Kd, 0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
+    myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
+    myGL.uniform1f(u_Kshiny, 76.8);	
         
         
-  modelMatrix.setTranslate(0, 0.6, 0.70);  // 'set' means DISCARD old matrix,
+  modelMatrix.setTranslate(0, 0.8, 0.70);  // 'set' means DISCARD old matrix,
   modelMatrix.scale(0.3, 0.3, 0.3);
   modelMatrix.rotate(currentAngle, 0,0,1);
                                                 
@@ -565,12 +570,12 @@ function drawCube(myGL){
 }
 
 function drawPyramid(myGL){
-    	// Set the Phong materials' reflectance:
-	myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
-	myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
-	myGL.uniform4f(u_Kd, 0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
-	myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
-	myGL.uniform1f(u_Kshiny, 76.8);	
+    // Set the Phong materials' reflectance:
+    myGL.uniform4f(u_Ke, 0.0,     0.0,    0.0,    1.0);		// Ke emissive
+    myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
+    myGL.uniform4f(u_Kd, 0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
+    myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
+    myGL.uniform1f(u_Kshiny, 76.8);	
         
   modelMatrix.setTranslate(0, 0.6, 0.2);  
   modelMatrix.rotate(90, 1, 0, 0);
@@ -595,22 +600,22 @@ function drawPyramid(myGL){
 
 function drawCH4(myGL){
         	// Set the Phong materials' reflectance:
-        /*
-	myGL.uniform4f(u_Ke, 0.0, 0.0, 0.0,1.0);		// Ke emissive
-	myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
-	myGL.uniform4f(u_Kd,0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
-	myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
-	myGL.uniform1f(u_Kshiny, 76.8);
-        */
-       
-       myGL.uniform4f(u_Ke, 0.0, 0.0, 0.0,1.0);		// Ke emissive
-	myGL.uniform4f(u_Ka,0.05375,  0.05,     0.06625,  0.82);		// Ka ambient
-	myGL.uniform4f(u_Kd,0.18275,  0.17,     0.22525,  0.82);		// Kd	diffuse
-	myGL.uniform4f(u_Ks, 0.332741, 0.328634, 0.346435, 0.82);		// Ks specular
-	myGL.uniform1f(u_Kshiny,  38.4);
+    /*
+    myGL.uniform4f(u_Ke, 0.0, 0.0, 0.0,1.0);		// Ke emissive
+    myGL.uniform4f(u_Ka,0.1745,   0.01175,  0.01175,  0.55);		// Ka ambient
+    myGL.uniform4f(u_Kd,0.61424,  0.04136,  0.04136,  0.55);		// Kd	diffuse
+    myGL.uniform4f(u_Ks, 0.727811, 0.626959, 0.626959, 0.55);		// Ks specular
+    myGL.uniform1f(u_Kshiny, 76.8);
+    */
+
+   myGL.uniform4f(u_Ke, 0.0, 0.0, 0.0,1.0);		// Ke emissive
+    myGL.uniform4f(u_Ka,0.05375,  0.05,     0.06625,  0.82);		// Ka ambient
+    myGL.uniform4f(u_Kd,0.18275,  0.17,     0.22525,  0.82);		// Kd	diffuse
+    myGL.uniform4f(u_Ks, 0.332741, 0.328634, 0.346435, 0.82);		// Ks specular
+    myGL.uniform1f(u_Kshiny,  38.4);
         
     var lenKey = 10;
-    modelMatrix.setTranslate(0.9, -0.2, 0.3);
+    modelMatrix.setTranslate(0.9, -0.9, 0.3);
      modelMatrix.rotate(currentAngle, 0, 0, 1);
   modelMatrix.scale(0.08, 0.08, 0.08);
   //modelMatrix.rotate(currentAngle, 0, 0, 1);
@@ -631,7 +636,7 @@ function drawCH4(myGL){
   myGL.drawArrays(myGL.TRIANGLE_STRIP,				// use this drawing primitive, and
   							smallSphereStart/floatsPerVertex,	// start at this vertex number, and 
   							smallSphereVerts.length/floatsPerVertex);	// draw this many vertices.
-    /*The second H*/ 																				// to match WebGL display canvas.
+    /*The second H*/ 													
   modelMatrix  = popMatrix();
   pushMatrix(modelMatrix); 				// if you DON'T scale, cyl goes outside the CVV; clipped!
  //-squr 3 /6,  y=1/2
@@ -642,7 +647,7 @@ function drawCH4(myGL){
   							smallSphereStart/floatsPerVertex,	// start at this vertex number, and 
   							smallSphereVerts.length/floatsPerVertex);	// draw this many vertices.
 
-  /*The third H*/ 																				// to match WebGL display canvas.
+  /*The third H*/ 													
   modelMatrix  = popMatrix();
   pushMatrix(modelMatrix); 
   modelMatrix.translate(0.0, 0.0, -0.204*lenKey);
@@ -719,7 +724,7 @@ function drawAndroid(myGL){
   
     //modelMatrix.setScale(0.1, 0.1, 0.1);
     //modelMatrix.setTranslate( X_STEP, Y_STEP-0.4, Z_STEP+0.5);
-  modelMatrix.setTranslate( -0.9, 0.0, 0.5);
+  modelMatrix.setTranslate( -1.3, 0.0, 0.5);
   modelMatrix.rotate(180, 0, 1, 0);
   
   //modelMatrix.scale(0.6, 0.6, 0.6);
@@ -1065,6 +1070,8 @@ function changeLightParam(paramFlag) {
                         Y_STEP = 0;
         }
     }
+    gl.uniform1i(u_FixedLightFlg,  1);
+    gl.uniform1i(u_MoveLightFlg,  1);	
 }
 /*
 function changeLightPos(direction){
@@ -1238,7 +1245,7 @@ function makeCylinder() {
 // 'stepped spiral' design described in notes.
 // Cylinder center at origin, encircles z axis, radius 1, top/bottom at z= +/-1.
 //
- var capVerts =50;	// # of vertices around the topmost 'cap' of the shape
+ var capVerts =100;	// # of vertices around the topmost 'cap' of the shape
  var botRadius = 0.2;		// radius of bottom of cylinder (top always 1.0)
  var floatsPerVertex = 7;
  // Create a (global) array to hold this cylinder's vertices;
