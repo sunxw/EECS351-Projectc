@@ -124,7 +124,7 @@ var FSHADER_SOURCE =
   '  }\n' +
   
   '  if (u_FixedLightFlg == 0 && u_MoveLightFlg == 0) {\n' +
-    '      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n' +
+    '      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n' +
     '}\n' +
   
     '  if (u_FixedLightFlg == 1 && u_MoveLightFlg == 1) {\n' +
@@ -186,10 +186,10 @@ var X_Light=0;
 var Y_Light=0;
 var Z_Light=0;
 
-var g_EyeX = 0.0, g_EyeY = -3.25, g_EyeZ = 0.15; 
+var g_EyeX = 0.0, g_EyeY = -5, g_EyeZ = 0.5; 
 //var g_CenterX = 0.0,g_CenterY = -2.25, g_CenterZ = 0.15;
-var g_CenterX = 0.0,g_CenterY = -0.71163, g_CenterZ = 0.71274;
-
+//var g_CenterX = 0.0,g_CenterY = -0.71163, g_CenterZ = 0.71274;
+var g_CenterX = 0.0,g_CenterY = -4, g_CenterZ = 0.5;
 
 var g_UpX = 0.0, g_UpY = 0.0, g_UpZ = 1.0;
 var g_Teta = 0; 
@@ -320,23 +320,117 @@ function main() {
 
   // Register the event handler to be called on key press
   document.onkeydown = function(ev){ doKeyDown(ev); };
-  canvas.onmousedown	=	function(ev){myMouseDown( ev, gl, canvas) }; 
+  //canvas.onmousedown	=	function(ev){myMouseDown( ev) }; 
   					// when user's mouse button goes down, call mouseDown() function
-  canvas.onmousemove = 	function(ev){myMouseMove( ev, gl, canvas) };
+  canvas.onmousemove = 	function(ev){myMouseMove( ev) };
 											// when the mouse moves, call mouseMove() function					
-  canvas.onmouseup = 		function(ev){myMouseUp(   ev, gl, canvas)};
+  //canvas.onmouseup = 		function(ev){myMouseUp(   ev)};
   
-  
+  //fixed light
+    gl.uniform1i(u_MoveLightFlg,  1);
   var tick = function() {
     currentAngle = animate(currentAngle);  // Update the rotation angle
       current_step = animateStep(current_step);
-        // Calculate the model matrix
-        winResize();
+         // 
+          
+      winResize();
+    
         requestAnimationFrame(tick, canvas);   
     						
   };
   tick();	
 }
+var rotateAngle;
+var mouseX = 640;
+var mouseY = 675;
+
+var MaxAngle = Math.PI/650;
+
+var pxLeft;
+var pyLeft;
+var pxRight;
+var pyRight;
+var pxBackWard;
+var pyBackWard;
+var pxForWard;
+var pyForWard;
+var currentLookdirectionX;
+var currentLookdirectionY;
+
+function resetAngle() {
+//==============================================================================
+// Called when user MOVES the mouse with a button already pressed down.
+// 									(Which button?   console.log('ev.button='+ev.button);    )
+// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
+//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
+
+	//if(isDrag==false) return;				// IGNORE all mouse-moves except 'dragging'
+
+	// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
+  //var xp = ev.clientX;
+ 
+
+  var MaxStandardLengthX = canvas.width/2;
+  var MaxStandardLengthY = canvas.height/2;
+    //console.log("canvas.width = "+ canvas.width);
+    //console.log("canvas.height = "+ canvas.height);
+  var distanceX =  mouseX - MaxStandardLengthX;
+  var distanceY = (-1) *(mouseY - MaxStandardLengthY);
+  
+  //console.log("distanceY = " + distanceY);
+
+  rotateAngle = MaxAngle * distanceX*(-1)/MaxStandardLengthX;
+  
+  // step1 calculat lookat after rotate an angle
+  var x0 = g_CenterX - g_EyeX;
+  var y0 = g_CenterY - g_EyeY;
+  var consA = Math.cos(rotateAngle);
+  var sinA = Math.sin(rotateAngle);
+  
+  g_CenterX = g_EyeX + x0 *consA - y0 *  sinA;
+  g_CenterY = g_EyeY + x0 *sinA + y0 * consA;
+  g_CenterZ = distanceY/(MaxStandardLengthY);
+  
+  pxForWard = g_CenterX;
+  pyForWard = g_CenterY;
+  //calculate point perpendicular to step1 90 degree anti-clock.
+  x0 = g_CenterX - g_EyeX;
+  y0 = g_CenterY - g_EyeY;
+  currentLookdirectionX = x0;
+  currentLookdirectionY = y0;
+  
+  consA = Math.cos(Math.PI/2);
+  sinA = Math.sin(Math.PI/2);
+  pxLeft = g_EyeX + x0 *consA - y0 *  sinA;
+  pyLeft = g_EyeY + x0 *sinA + y0 * consA;
+  
+  //calculate point perpendicular to step1 90 degree clock
+  consA = Math.cos((-1)*Math.PI/2);
+  sinA = Math.sin((-1)*Math.PI/2);
+  pxRight=g_EyeX + x0 *consA - y0 *  sinA;
+  pyRight=g_EyeY + x0 *sinA + y0 * consA;
+  
+  //calculate point backwards to step1
+  consA = Math.cos(Math.PI);
+  sinA = Math.sin(Math.PI);
+  pxBackWard=g_EyeX + x0 *consA - y0 *  sinA;
+  pyBackWard=g_EyeY + x0 *sinA + y0 * consA;
+          
+};
+
+function myMouseMove(ev) {
+//==============================================================================
+// Called when user MOVES the mouse with a button already pressed down.
+// 									(Which button?   console.log('ev.button='+ev.button);    )
+// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
+//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
+
+	//if(isDrag==false) return;				// IGNORE all mouse-moves except 'dragging'
+
+	// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
+  mouseX = ev.clientX;
+  mouseY = ev.clientY;
+};
 
 function winResize() {
 //==============================================================================
@@ -349,26 +443,19 @@ function winResize() {
     //canvas.width = innerWidth*3/4;
     canvas.width = innerWidth;
     canvas.height = innerHeight;
-    gl.uniform3f(u_Lamp0Pos, 5.0+X_Light, -8.0+Y_Light, 7.0+Z_Light);
+
+    resetAngle();
+    
+        gl.uniform3f(u_Lamp0Pos, 5.0+X_Light, -8.0+Y_Light, 7.0+Z_Light);
     gl.uniform3f(u_Lamp1Pos,g_EyeX, g_EyeY, g_EyeZ);
     
-    //gl.uniform1i(u_FixedLightFlg,  1);
-    gl.uniform1i(u_MoveLightFlg,  1);
-    
     draw(gl);
-    //canvas.fillText("Hello World!",10,50);
 }
 
-var lookRadius = Math.sqrt((g_EyeX - g_CenterX) * (g_EyeX - g_CenterX) + (g_EyeY - g_CenterY) * (g_EyeY - g_CenterY) + (g_EyeZ - g_CenterY) * (g_EyeZ - g_CenterY));
-console.log(lookRadius);
-var xyRotateAngle = Math.asin((g_EyeX - g_CenterX) / lookRadius) / Math.PI * 180;
-xyRotateAngle %= 360;
-console.log(xyRotateAngle);
-var zRotateAngle = Math.asin((g_EyeZ - g_CenterZ) / lookRadius) / Math.PI * 180;
-zRotateAngle %= 360;
 
 function doKeyDown(event) {
     var e = event.keyCode;
+    var divedMoveSpeed = 15;
     
     if(e==40){
         Y_Light = Y_Light-5;
@@ -389,91 +476,64 @@ function doKeyDown(event) {
         Z_Light = Z_Light + 5;
     }
      else if (e == 68) { // D
-        g_EyeX += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterX += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        g_EyeX += (pxRight-g_EyeX)/divedMoveSpeed;
+        g_EyeY += (pyRight-g_EyeY)/divedMoveSpeed;
+        g_CenterX = g_EyeX + currentLookdirectionX;
+        g_CenterY = g_EyeY + currentLookdirectionY;
+      
     }
     else if (e == 65) { // A
-        g_EyeX -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterX -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+         g_EyeX += (pxLeft-g_EyeX)/divedMoveSpeed;
+        g_EyeY += (pyLeft-g_EyeY)/divedMoveSpeed;
+        g_CenterX = g_EyeX + currentLookdirectionX;
+        g_CenterY = g_EyeY + currentLookdirectionY;
+      
     }
     else if (e == 83) { // S
-        g_EyeX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeY -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterY -= Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_EyeZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterZ += Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        g_EyeX += (pxBackWard-g_EyeX)/divedMoveSpeed;
+        g_EyeY += (pyBackWard-g_EyeY)/divedMoveSpeed;
+        g_CenterX = g_EyeX + currentLookdirectionX;
+        g_CenterY = g_EyeY + currentLookdirectionY;
+        
+      
     }
     else if (e == 87) { // W
-        g_EyeX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeY += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        g_CenterY += Math.cos(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_EyeZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterZ -= Math.sin(zRotateAngle / 180 * Math.PI) / 5;
+        
+        g_EyeX += (pxForWard-g_EyeX)/divedMoveSpeed;
+        g_EyeY += (pyForWard-g_EyeY)/divedMoveSpeed;
+        
+        g_CenterX = g_EyeX + currentLookdirectionX;
+        g_CenterY = g_EyeY + currentLookdirectionY;
+      
     }
     else if (e == 70) { // F
-        //g_EyeX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterX -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_EyeY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterY += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeZ -= Math.cos(zRotateAngle / 180 * Math.PI) / 5;
-        g_CenterZ -= Math.cos(zRotateAngle / 180 * Math.PI) / 5;
+        g_EyeZ -= 0.05;
+        g_CenterZ -= 0.05;
     }
     else if (e == 82) { // R
-        //g_EyeX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterX += Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_EyeY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        //g_CenterY -= Math.sin(xyRotateAngle / 180 * Math.PI) / 5;
-        g_EyeZ += Math.cos(zRotateAngle / 180 * Math.PI) / 5;
-        g_CenterZ += Math.cos(zRotateAngle / 180 * Math.PI) / 5;
+      
+        g_EyeZ += 0.05;
+        g_CenterZ += 0.05;
     }
-    
-    else if(e==74){
-       xyRotateAngle += 0.8;
-        xyRotateAngle %= 360;
-        // console.log(xyRotateAngle);
-        var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
-        // console.log(xyLookRadius);
-        g_CenterX = g_EyeX - xyLookRadius * Math.sin(xyRotateAngle / 180 * Math.PI);
-        g_CenterY = g_EyeY + xyLookRadius * Math.cos(xyRotateAngle / 180 * Math.PI);
-        // console.log(g_CenterX, g_CenterY, g_CenterZ);
+       else if(e==79){//
+         if (X_STEP == 0) {
+            
+            gl.uniform1i(u_FixedLightFlg,  1);	
+            X_STEP = 1;
+        }else{
+            gl.uniform1i(u_FixedLightFlg,  0);	
+            X_STEP = 0;
+        }
     }
-    else if(e==76){
-        xyRotateAngle -= 0.8;
-        xyRotateAngle %= 360;
-        // console.log(xyRotateAngle);
-        var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
-        // console.log(xyLookRadius);
-        g_CenterX = g_EyeX - xyLookRadius * Math.sin(xyRotateAngle / 180 * Math.PI);
-        g_CenterY = g_EyeY + xyLookRadius * Math.cos(xyRotateAngle / 180 * Math.PI);
-        // console.log(g_CenterX, g_CenterY, g_CenterZ);
-    }
-     else if (e == 73) { // The up arrow key was pressed
-        zRotateAngle -= 0.8;
-        zRotateAngle %= 360;
-        var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
-        var zLookRadius = lookRadius * Math.sin(zRotateAngle / 180 * Math.PI);
-        g_CenterX = g_EyeX - xyLookRadius * Math.sin(xyRotateAngle / 180 * Math.PI);
-        g_CenterY = g_EyeY + xyLookRadius * Math.cos(xyRotateAngle / 180 * Math.PI);
-        g_CenterZ = g_EyeZ - zLookRadius;
-    }
-         else if (e == 75) { // The up arrow key was pressed
-        zRotateAngle += 0.8;
-        zRotateAngle %= 360;
-        var xyLookRadius = lookRadius * Math.cos(zRotateAngle / 180 * Math.PI);
-        var zLookRadius = lookRadius * Math.sin(zRotateAngle / 180 * Math.PI);
-        g_CenterX = g_EyeX - xyLookRadius * Math.sin(xyRotateAngle / 180 * Math.PI);
-        g_CenterY = g_EyeY + xyLookRadius * Math.cos(xyRotateAngle / 180 * Math.PI);
-        g_CenterZ = g_EyeZ - zLookRadius;
+    else if(e==80){
+                if (Y_STEP == 0) {
+            
+            gl.uniform1i(u_MoveLightFlg,  1);	
+                        Y_STEP = 1;
+        }else{
+            gl.uniform1i(u_MoveLightFlg,  0);	
+                        Y_STEP = 0;
+        }
     }
     
 }
@@ -1049,30 +1109,6 @@ function animateStep(angle) {
   return newAngle %= 360;
 }
 
-function changeLightParam(paramFlag) {
-    
-    if (paramFlag == 0) {//fixed light
-        if (X_STEP == 0) {
-            
-            gl.uniform1i(u_FixedLightFlg,  1);	
-            X_STEP = 1;
-        }else{
-            gl.uniform1i(u_FixedLightFlg,  0);	
-            X_STEP = 0;
-        }
-    }else{
-        if (Y_STEP == 0) {
-            
-            gl.uniform1i(u_MoveLightFlg,  1);	
-                        Y_STEP = 1;
-        }else{
-            gl.uniform1i(u_MoveLightFlg,  0);	
-                        Y_STEP = 0;
-        }
-    }
-    gl.uniform1i(u_FixedLightFlg,  1);
-    gl.uniform1i(u_MoveLightFlg,  1);	
-}
 /*
 function changeLightPos(direction){
     if(direction = 0){
@@ -1595,7 +1631,7 @@ function makeAxes(){
      
  }
 
-
+/*
 function myMouseDown(ev, gl, canvas) {
 //==============================================================================
 // Called when user PRESSES down any mouse button;
@@ -1622,32 +1658,6 @@ function myMouseDown(ev, gl, canvas) {
 };
 
 
-function myMouseMove(ev, gl, canvas) {
-//==============================================================================
-// Called when user MOVES the mouse with a button already pressed down.
-// 									(Which button?   console.log('ev.button='+ev.button);    )
-// 		ev.clientX, ev.clientY == mouse pointer location, but measured in webpage 
-//		pixels: left-handed coords; UPPER left origin; Y increases DOWNWARDS (!)  
-
-	if(isDrag==false) return;				// IGNORE all mouse-moves except 'dragging'
-
-	// Create right-handed 'pixel' coords with origin at WebGL canvas LOWER left;
-  var rect = ev.target.getBoundingClientRect();	// get canvas corners in pixels
-  var xp = ev.clientX - rect.left;									// x==0 at canvas left edge
-	var yp = canvas.height - (ev.clientY - rect.top);	// y==0 at canvas bottom edge
-//  console.log('myMouseMove(pixel coords): xp,yp=\t',xp,',\t',yp);
-  
-	// Convert to Canonical View Volume (CVV) coordinates too:
-  var x = (xp - canvas.width/2)  / 		// move origin to center of canvas and
-  						 (canvas.width/2);			// normalize canvas to -1 <= x < +1,
-	var y = (yp - canvas.height/2) /		//										 -1 <= y < +1.
-							 (canvas.height/2);
-
-	// find how far we dragged the mouse:
-	xMdragTot += (x - xMclik);					// Accumulate change-in-mouse-position,&
-	yMdragTot += (y - yMclik);
-
-};
 
 function myMouseUp(ev, gl, canvas) {
 //==============================================================================
@@ -1676,3 +1686,4 @@ function myMouseUp(ev, gl, canvas) {
 //	console.log('myMouseUp: xMdragTot,yMdragTot =',xMdragTot,',\t',yMdragTot);
 
 };
+*/
