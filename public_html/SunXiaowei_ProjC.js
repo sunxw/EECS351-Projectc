@@ -784,7 +784,7 @@ function drawAndroid(myGL){
   
     //modelMatrix.setScale(0.1, 0.1, 0.1);
     //modelMatrix.setTranslate( X_STEP, Y_STEP-0.4, Z_STEP+0.5);
-  modelMatrix.setTranslate( -1.3, 0.0, 0.5);
+  modelMatrix.setTranslate( -1.3, 0.0, 0.55);
   modelMatrix.rotate(180, 0, 1, 0);
   
   //modelMatrix.scale(0.6, 0.6, 0.6);
